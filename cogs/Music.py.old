@@ -1,0 +1,407 @@
+# import asyncio
+# import os
+# import discord
+# import youtube_dl
+# from discord.ext import commands
+# import aiohttp
+# from youtube_search import YoutubeSearch
+# import datetime
+# import random
+# import itertools
+# from async_timeout import timeout
+# 
+# 
+# ### HELPER FUNCTIONS
+# 
+# prefix = os.getenv('PREFIX')
+# 
+# async def color():
+#     random_number = random.randint(0, 16777215)
+#     hex_number = hex(random_number)
+#     return int(hex_number, base=16)
+# 
+# 
+# async def delete_songs():
+#     files = os.listdir("songs")
+#     for file in files:
+#         os.remove("songs/" + file)
+# 
+# 
+# async def search_youtube(query):
+#     results = YoutubeSearch(query, max_results=1).to_dict()
+#     return f"https://www.youtube.com/{results[0]['url_suffix']}"
+# 
+# async def is_link(query):
+#     try:
+#         async with aiohttp.ClientSession() as session:
+#             async with session.get(query) as response:
+#                 if response:
+#                     return True
+#     except:
+#         return False
+# 
+# 
+# ### END OF HELPERS
+# 
+# ### YOUTUBE FUNCTIONS ###
+# 
+# youtube_dl.utils.bug_reports_message = lambda: ''
+# 
+# ytdl_format_options = {
+#     'format': 'bestaudio/best',
+#     'outtmpl': 'songs/%(extractor)s-%(id)s-%(title)s.%(ext)s',
+#     'restrictfilenames': True,
+#     'noplaylist': True,
+#     'nocheckcertificate': True,
+#     'ignoreerrors': False,
+#     'logtostderr': False,
+#     'quiet': True,
+#     'no_warnings': True,
+#     'default_search': 'auto',
+#     'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
+# }
+# 
+# ffmpeg_options = {
+#     'options': '-vn'
+# }
+# 
+# ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+# 
+# class YTDLSource(discord.PCMVolumeTransformer):
+#     def __init__(self, source, *, data, volume=0.5):
+#         super().__init__(source, volume)
+# 
+#         self.data = data
+# 
+#         self.title = data.get('title')
+#         self.url = data.get('url')
+#         self.id = data.get('id')
+#         self.duration = data.get('duration')
+#         self.web_url = data.get('webpage_url')
+#         self.description = data.get('description')[slice(200)]
+# 
+#     @classmethod
+#     async def from_url(cls, url, *, loop=None, stream=False):
+#         loop = loop or asyncio.get_event_loop()
+#         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
+# 
+#         if 'entries' in data:
+#             # take first item from a playlist
+#             data = data['entries'][0]
+# 
+#         filename = data['url'] if stream else ytdl.prepare_filename(data)
+#         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+# 
+# ### END OF YOUTUBE ###
+# 
+# 
+# class Music(commands.Cog, name='Music'):
+# 
+#     def __init__(self, client):
+# 
+#         self.client = client
+#         self.song_queue = {}
+#         self.streamers = {}
+# 
+#         self.current = asyncio.Queue()
+#         self.up_curr = asyncio.Event()
+# 
+# 
+# 
+#     async def cur_print(self, ctx):
+#         pass
+# 
+# 
+# 
+#     @commands.command(name='join', help=f'Join user voice channel. Needed for {prefix}next')
+#     # @commands.guild_only()
+#     async def join(self, ctx):
+#         if ctx.guild is None:
+#             await ctx.send("This isn't available in DMs")
+#             return
+#         if ctx.message.author.voice is None:
+#             await ctx.send(f"{ctx.message.author.mention}\nConnect to a voice channel first")
+#             return
+#         else:
+#             vchannel = ctx.message.author.voice.channel
+# 
+#         voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+# 
+#         if voice is None:
+#             await ctx.send(f"Joining {ctx.message.author.mention} in {ctx.message.author.voice.channel}")
+#             await vchannel.connect()
+#         else:
+#             if ctx.bot.user in vchannel.members:
+#                 await ctx.send(
+#                     f"I'm already connected to your channel {ctx.message.author.mention}. ```{prefix}stop``` me first")
+#                 return
+#             else:
+#                 await ctx.send(f"Joining {ctx.message.author.mention} in {ctx.message.author.voice.channel}")
+#                 await ctx.voice_client.move_to(vchannel)
+# 
+# 
+# 
+# 
+#     ##TODO Play
+#     @commands.command(name='play', help='Play a track without using the queue')
+#     async def play(self, ctx, *args):
+#         if ctx.guild is None:
+#             await ctx.send("This isn't available in DMs")
+#             return
+# 
+#         voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+# 
+# 
+#         if voice is None:
+#             await ctx.send(f"{ctx.message.author.mention} use ```{prefix}join``` first")
+#             return
+#         if not args:
+#             await ctx.send(f"Play what?\nTry ```{prefix}play https://www.youtube.com/watch?v=dQw4w9WgXcQ``` or ```{prefix}play ncs```\nIf you want to play the next song in queue, use ```{prefix}next```")
+#             return
+# 
+#         server = ctx.message.guild
+#         vc = server.voice_client
+# 
+#         # if vc.is_playing():
+#         #     await ctx.send("Already playing. Stop me first or add it to the queue")
+#         #     return
+# 
+# 
+#         getting_message = await ctx.send(f"{ctx.message.author.mention} " + "\n" + "Getting stream...")
+#         if len(args) == 1:
+#             args = args[0]
+#         else:
+#             args = " ".join(args[:])
+#         if not await is_link(args):
+#             args = await search_youtube(args)
+# 
+# 
+#         async with ctx.typing():
+#             vc.stop()
+#             streamer = await YTDLSource.from_url(url=args, loop=self.client.loop)
+#             # streamer = self.song_queue[server.id].pop(0)
+#             self.streamers[server.id] = streamer
+#             vc.play(streamer, after=lambda e: print(":<"))#self.playnext(ctx))
+# 
+#         embed = discord.Embed(title=f"{streamer.title}", url=f"{streamer.web_url}",
+#                               description=f"Playing in {ctx.voice_client.channel}",
+#                               color=await color())
+#         embed.set_author(name=f"Now Playing for {ctx.message.author}",
+#                          icon_url=ctx.author.avatar_url)
+#         embed.set_thumbnail(url=f"https://i.ytimg.com/vi_webp/{streamer.id}/maxresdefault.webp")
+#         embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=streamer.duration)))
+#         await ctx.send(embed=embed)
+#         await getting_message.delete()
+#         # await ctx.send(f"{streamer.url}")
+#         await asyncio.sleep(5)
+#         try:
+#             await delete_songs()
+#         except:
+#             pass
+# 
+# 
+#     def playnext(self, ctx):
+#         try:
+#             server = ctx.message.guild
+#             if self.song_queue[server.id] != []:
+#                 vc = server.voice_client
+#                 vc.stop()
+#                 streamer = self.song_queue[server.id].pop(0)
+#                 self.streamers[server.id] = streamer
+#                 vc.play(streamer, after=lambda e: self.playnext(ctx))
+#             else:
+#                 print("Over")
+# 
+#         except Exception as e:
+#             print(e)
+#             pass
+# 
+# 
+# 
+#     ##TODO Next
+#     @commands.command(name='next', help='Play next track in queue')
+#     # @commands.guild_only()
+#     async def next(self, ctx):
+# 
+#         if ctx.guild is None:
+#             await ctx.send("This isn't available in DMs")
+#             return
+# 
+#         voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+#         server = ctx.message.guild
+# 
+#         if voice is None and (server.id not in self.song_queue or not self.song_queue[server.id]):
+#             await ctx.send(
+#                 f"{ctx.message.author.mention} use ```{prefix}join``` first. Also the queue is empty.\nUse ```{prefix}enqueue```")
+#             return
+# 
+#         if server.id not in self.song_queue or not self.song_queue[server.id]:
+#             await ctx.send(f"The queue is empty.\nUse ```{prefix}enqueue```")
+#             return
+# 
+#         if voice is None:
+#             await ctx.send(f"{ctx.message.author.mention} use ```{prefix}join``` first")
+#             return
+# 
+# 
+# 
+#         server = ctx.message.guild
+#         vc = server.voice_client
+# 
+#         if vc.is_playing():
+#             vc.stop()
+#             return
+# 
+#         async with ctx.typing():
+#             vc.stop()
+#             # streamer = await YTDLSource.from_url(url=url, loop=self.client.loop)
+#             streamer = self.song_queue[server.id].pop(0)
+#             self.streamers[server.id] = streamer
+#             vc.play(streamer, after=lambda e: print(":<"))#self.playnext(ctx))
+# 
+# 
+#         embed = discord.Embed(title=f"{streamer.title}", url=f"{streamer.web_url}",
+#                               description=f"Playing in {ctx.voice_client.channel}",
+#                               color=await color())
+#         embed.set_author(name=f"Now Playing for {ctx.message.author}",
+#                          icon_url=ctx.author.avatar_url)
+#         embed.set_thumbnail(url=f"https://i.ytimg.com/vi_webp/{streamer.id}/maxresdefault.webp")
+#         embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=streamer.duration)))
+#         await ctx.send(embed=embed)
+#         # await ctx.send(f"{streamer.url}")
+#         await asyncio.sleep(5)
+#         try:
+#             await delete_songs()
+#         except:
+#             pass
+# 
+#     @commands.command(name='enqueue', help='This command adds a track to the queue')
+#     async def enqueue(self, ctx, *args):
+#         if not args:
+#             await ctx.send(f"Enqueue what?\nTry ```{prefix}enqueue https://www.youtube.com/watch?v=dQw4w9WgXcQ``` or ```{prefix}enqueue ncs```")
+#             return
+#         server = ctx.message.guild
+#         vc = server.voice_client
+#         getting_message = await ctx.send(f"{ctx.message.author.mention} " + "\n" + "Getting stream...")
+#         if len(args) == 1:
+#             args = args[0]
+#             if not await is_link(args):
+#                 args = await search_youtube(args)
+#                 streamer = await YTDLSource.from_url(url=args, loop=self.client.loop)
+#                 if server.id in self.song_queue:
+#                     self.song_queue[server.id].append(streamer)
+#                 else:
+#                     self.song_queue[server.id] = [streamer]
+#             else:
+#                 streamer = await YTDLSource.from_url(url=args, loop=self.client.loop)
+#                 if server.id in self.song_queue:
+#                     self.song_queue[server.id].append(streamer)
+#                 else:
+#                     self.song_queue[server.id] = [streamer]
+#         else:
+#             args = " ".join(args[:])
+# 
+#         if not await is_link(args):
+#             args = await search_youtube(args)
+#             streamer = await YTDLSource.from_url(url=args, loop=self.client.loop)
+#             if server.id in self.song_queue:
+#                 self.song_queue[server.id].append(streamer)
+#             else:
+#                 self.song_queue[server.id] = [streamer]
+# 
+#         embed = discord.Embed(title=f"{streamer.title}", url=f"{streamer.web_url}",
+#                               description=f"{streamer.description}",
+#                               color=await color())
+#         embed.set_author(name=f"Added to playlist by {ctx.message.author}",
+#                          icon_url=ctx.author.avatar_url)
+#         embed.set_thumbnail(url=f"https://i.ytimg.com/vi_webp/{streamer.id}/maxresdefault.webp")
+#         embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=streamer.duration)))
+#         embed.add_field(name='Help?', value=f"Use {prefix}next to start")
+#         embed_queue = discord.Embed(title='Current queue', color=await color())
+# 
+#         for num, song in enumerate(self.song_queue[server.id]):
+#             embed_queue.add_field(name=f'Track {num + 1}', value=song.title, inline=False)
+#         await ctx.send(embed=embed)
+#         await ctx.send(embed=embed_queue)
+#         await getting_message.delete()
+# 
+# 
+#     @commands.command(name='dequeue', help='This command removes a track from the queue')
+#     async def dequeue(self, ctx, num=-1):
+#         server = ctx.message.guild
+#         if server.id not in self.song_queue or not self.song_queue[server.id]:
+#             await ctx.send("Queue is empty already")
+#             return
+#         if num <= -1:
+#             self.song_queue[server.id] = []
+#             await ctx.send("The queue has been emptied")
+#             return
+#         num = int(num) - 1
+# 
+#         try:
+#             self.song_queue[server.id].pop(int(num))
+#             embed_queue = discord.Embed(title='Current queue', color=await color())
+# 
+#             for num, song in enumerate(self.song_queue[server.id]):
+#                 embed_queue.add_field(name=f'Track {num + 1}', value=song.title, inline=False)
+#             await ctx.send(embed=embed_queue)
+#         except:
+#             await ctx.send("You provided a bad queue index")
+# 
+#     @commands.command(name='queue', help='This command returns the tracks in the queue')
+#     async def queue(self, ctx):
+#         server = ctx.message.guild
+#         if server.id in self.song_queue and self.song_queue[server.id]:
+#             embed_queue = discord.Embed(title='Current queue', color=await color())
+# 
+#             for num, song in enumerate(self.song_queue[server.id]):
+#                 embed_queue.add_field(name=f'Track {num + 1}', value=song.title, inline=False)
+#             await ctx.send(embed=embed_queue)
+#         else:
+#             await ctx.send("Your queue is empty")
+# 
+# 
+#     ##TODO Stop
+#     @commands.command(name='stop', help='Stops playback, clears queue and leaves the voice channel')
+#     # @commands.guild_only()
+#     async def stop(self, ctx):
+#         if ctx.guild is None:
+#             await ctx.send("This isn't available in DMs")
+#             return
+#         voice = discord.utils.get(self.client.voice_clients, guild=ctx.guild)
+#         if voice is None:
+#             await ctx.send("But I no start :<")
+#             return
+#         vchannel = ctx.message.guild.voice_client
+#         await ctx.send("Kbye")
+#         await vchannel.disconnect()
+#         try:
+#             await delete_songs()
+#         except:
+#             pass
+#         server = ctx.message.guild
+#         if server.id in self.song_queue:
+#             self.song_queue[server.id] = []
+# 
+#     ##TODO Pause
+#     @commands.command(name='pause', help='Pause currently playing track')
+#     async def pause(self, ctx):
+#         if ctx.voice_client:
+#             await ctx.send("Music Paused")
+#             ctx.voice_client.pause()
+#         else:
+#             await ctx.send("Not currently playing")
+# 
+#     ##TODO Resume
+#     @commands.command(name='resume', help='Resume currently playing track')
+#     async def resume(self, ctx):
+#         if ctx.voice_client:
+#             await ctx.send("Music Resumed")
+#             ctx.voice_client.resume()
+#         else:
+#             await ctx.send("Not currently playing")
+# 
+# 
+# def setup(client):
+#     client.add_cog(Music(client))
+# 
