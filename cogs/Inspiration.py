@@ -15,7 +15,7 @@ async def color():
 async def quotes():
     async with aiohttp.ClientSession() as session:
         async with session.get("https://zenquotes.io/api/random") as response:
-            json = await response.json(content_type='text/plain')
+            json = await response.json(content_type='application/json')
             quote = json[0]["q"]
             author = json[0]["a"]
             final = quote + " " + "\n-" + author
