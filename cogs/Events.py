@@ -31,7 +31,7 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        await member.send(f'Ello {member}. Welcome to {member.guild}. See what I can do for you with {os.getenv("PREFIX")}help')
+        await member.send(f'Ello {member}. Welcome to {member.guild}. See what I can do for you with {prefix}help')
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -45,10 +45,10 @@ class Events(commands.Cog):
     async def on_guild_join(self, guild):
         try:
             joinchannel = guild.system_channel
-            await joinchannel.send(f'Thanks for inviting me to your server! Use {os.getenv("PREFIX")}help to find out how I work')
+            await joinchannel.send(f'Thanks for inviting me to your server! Use {prefix}help to find out how I work')
         except:
             await guild.text_channels[0].send(
-                f'Thanks for inviting me to your server! Use {os.getenv("PREFIX")}help to find out how I work')
+                f'Thanks for inviting me to your server! Use {prefix}help to find out how I work')
 
 
     @commands.Cog.listener()
