@@ -45,10 +45,10 @@ class Events(commands.Cog):
     async def on_guild_join(self, guild):
         try:
             joinchannel = guild.system_channel
-            await joinchannel.send(f'Thanks for inviting me to your server! Use {prefix}help to find out how I work')
+            await joinchannel.send(f'Thanks for inviting me to your server! Use {os.getenv("PREFIX")}help to find out how I work')
         except:
             await guild.text_channels[0].send(
-                "Thanks for inviting me to your server! Use ##help to find out how I work")
+                f'Thanks for inviting me to your server! Use {os.getenv("PREFIX")}help to find out how I work')
 
 
     @commands.Cog.listener()
