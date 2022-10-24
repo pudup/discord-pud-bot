@@ -21,10 +21,11 @@ async def color():
     return int(hex_number, base=16)
 
 
-async def delete_songs():
-    files = os.listdir("songs")
+async def delete_songs(server_id):
+    files = os.listdir(f"songs/{server_id}")
     for file in files:
-        os.remove("songs/" + file)
+        os.remove(f"songs/{server_id}/" + file)
+    os.rmdir(f"songs/{server_id}/")
 
 
 async def search_youtube(query):
@@ -49,7 +50,7 @@ youtube_dl.utils.bug_reports_message = lambda: ''
 
 ytdl_format_options = {
     'format': 'bestaudio/best',
-    'outtmpl': 'songs/%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    # 'outtmpl': 'songs/%(extractor)s-%(id)s-%(title)s.%(ext)s',
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
@@ -81,11 +82,13 @@ class YTDLSource(discord.PCMVolumeTransformer):
         self.description = data.get('description')[slice(200)]
 
     @classmethod
-    async def from_url(cls, url, *, loop=None, stream=False):
+    async def from_url(cls, url, *, loop=None, stream=False, server_id):
         loop = loop or asyncio.get_event_loop()
+        ytdl.params['outtmpl'] = f'songs/{server_id}/%(extractor)s-%(id)s-%(title)s.%(ext)s'
         data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
 
         if 'entries' in data:
+            # take first item from a playlist
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
@@ -147,10 +150,10 @@ class MusicStreamer:
             embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=source.duration)))
             await asyncio.sleep(2)
             self.current_track = await self.ctx.send(embed=embed)
-            try:
-                await delete_songs()
-            except:
-                pass
+            # try:
+            #     await delete_songs()
+            # except:
+            #     pass
 
 
             await self.play_next.wait()
@@ -187,7 +190,7 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
         if len(voice_state.channel.members) == 1:
             await voice_state.disconnect()
             try:
-                await delete_songs()
+                await delete_songs(member.guild.id)
             except:
                 pass
             server = member.guild
@@ -225,9 +228,13 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
 
     ##TODO Playsingle
     @commands.command(name='playsingle', help='Play a track without using the queue')
-    async def playsingle(self, ctx, *, args):
+    async def playsingle(self, ctx, *, args=""):
         if ctx.guild is None:
             await ctx.send("This isn't available in DMs")
+            return
+
+        if args == "":
+            await ctx.send(f"Play/Add what?\nTry ```{prefix}play https://www.youtube.com/watch?v=dQw4w9WgXcQ``` or ```{prefix}add ncs```")
             return
 
         if ctx.message.author.voice is None:
@@ -264,7 +271,7 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
 
         async with ctx.typing():
             vc.stop()
-            streamer = await YTDLSource.from_url(url=args, loop=self.client.loop)
+            streamer = await YTDLSource.from_url(url=args, loop=self.client.loop, server_id=ctx.guild.id)
             self.streamers[server.id] = streamer
             vc.play(streamer, after=lambda e: print(":<"))#self.playnext(ctx))
 
@@ -279,7 +286,7 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
         await getting_message.delete()
         await asyncio.sleep(5)
         try:
-            await delete_songs()
+            await delete_songs(ctx.guild.id)
         except:
             pass
 
@@ -360,11 +367,11 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
 
 
     @commands.command(name='play', help='This command either plays a given song or adds one to the playlist', aliases=['add'])
-    async def play(self, ctx, *, args):
+    async def play(self, ctx, *, args=""):
         if ctx.guild is None:
             await ctx.send("This isn't available in DMs")
             return
-        if not args:
+        if args == "":
             await ctx.send(f"Play/Add what?\nTry ```{prefix}play https://www.youtube.com/watch?v=dQw4w9WgXcQ``` or ```{prefix}add ncs```")
             return
         if ctx.message.author.voice is None:
@@ -397,11 +404,11 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
         if not await is_link(args):
             getting_message = await ctx.send(f"{ctx.message.author.mention} " + "\n" + f"Tryna find {args}...")
             args = await search_youtube(args)
-            source = await YTDLSource.from_url(url=args, loop=self.client.loop)
+            source = await YTDLSource.from_url(url=args, loop=self.client.loop, server_id=ctx.guild.id)
             await streamer.queue.put(source)
         else:
             getting_message = await ctx.send(f"{ctx.message.author.mention} " + "\n" + f"Getting this link <{args}>...")
-            source = await YTDLSource.from_url(url=args, loop=self.client.loop)
+            source = await YTDLSource.from_url(url=args, loop=self.client.loop, server_id=ctx.guild.id)
             await streamer.queue.put(source)
 
 
@@ -475,7 +482,7 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
         await ctx.send("Kbye")
         await vchannel.disconnect()
         try:
-            await delete_songs()
+            await delete_songs(ctx.guild.id)
         except:
             pass
         server = ctx.message.guild
