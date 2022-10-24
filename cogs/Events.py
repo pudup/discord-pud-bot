@@ -36,7 +36,7 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandNotFound):
-            await ctx.send(f"I don't know this command. See my list of commands with ```{os.getenv('PREFIX')}help```")
+            await ctx.send(f"I don't know this command. See my list of commands with ```{prefix}help```")
         else:
             await ctx.send("I've encountered an error. Please try again.")
             print(error)
