@@ -7,8 +7,7 @@ import aiohttp
 from youtube_search import YoutubeSearch
 import datetime
 import random
-import itertools
-from async_timeout import timeout
+
 
 
 ### HELPER FUNCTIONS
