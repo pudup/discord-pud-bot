@@ -1,10 +1,14 @@
-import os
-import aiofiles
 import discord
 from bs4 import BeautifulSoup
 from discord.ext import commands
 import aiohttp
 import random
+
+async def kittenthumb():
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://api.thecatapi.com/v1/images/search") as response:
+            text = await response.json()
+            return text[0]['url']
 
 async def color():
     random_number = random.randint(0, 16777215)
@@ -37,8 +41,9 @@ class Images(commands.Cog, name='Images', description="kitten, meme"):
         # server = ctx.message.guild
         message = await ctx.send(f"{ctx.message.author.mention} " + "\n" + "Gitten Kitten...")
         embed = discord.Embed(color=await color())
-        embed.set_author(name=f"Gitten a Kitten for {ctx.message.author}", icon_url=ctx.author.avatar_url)
-        embed.set_image(url=await get_kittens())
+        embed.set_author(name=f"Gitten a Kitten for {ctx.message.author}", icon_url=ctx.author.avatar.url)
+        embed.set_image(url=await kittenthumb())
+        await ctx.send("The kittens are on strike :<. Here's a cat (maybe kitten :>) image instead")
         await ctx.send(embed=embed)
         await message.delete()
 
@@ -46,13 +51,11 @@ class Images(commands.Cog, name='Images', description="kitten, meme"):
     async def get_meme(self, ctx):
         message = await ctx.send(f"{ctx.message.author.mention} " + "\n" + "Fetching shitty meme...")
         embed = discord.Embed(color=await color())
-        embed.set_author(name=f"Shitty meme for {ctx.message.author}", icon_url=ctx.author.avatar_url)
+        embed.set_author(name=f"Shitty meme for {ctx.message.author}", icon_url=ctx.author.avatar.url)
         embed.set_image(url=await get_memes())
         await ctx.send(embed=embed)
         await message.delete()
 
 
-
-
-def setup(client):
-    client.add_cog(Images(client))
+async def setup(client):
+    await client.add_cog(Images(client))

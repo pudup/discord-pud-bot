@@ -1,12 +1,11 @@
 import os
 import random
-
-import aiofiles
 import discord
 from discord.ext import commands
 import aiohttp
 
 
+PREFIX = os.getenv('PREFIX')
 
 async def color():
     random_number = random.randint(0, 16777215)
@@ -86,11 +85,11 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
     def __init__(self, client):
         self.client = client
 
-    @commands.command(name='pokedex', brief='Get Pokémon from Pokédex', description=f'Get name of pokémon at pokédex number. \n Try ##pokeindex {random.randint(1, 898)}')
+    @commands.command(name='pokedex', brief='Get Pokémon from Pokédex', description=f'Get name of pokémon at pokédex number. \n Try {PREFIX}pokeindex {random.randint(1, 898)}')
     async def pokedex(self, ctx, *, arg=None):
         if not arg:
             await ctx.send(
-                f"{ctx.message.author.mention}\nThis command requires an additional argument\nTry:\n```{os.getenv('PREFIX')}pokedex {random.randint(1, 898)}```")
+                f"{ctx.message.author.mention}\nThis command requires an additional argument\nTry:\n```{PREFIX}pokedex {random.randint(1, 898)}```")
             return
         try:
             arg = int(arg)
@@ -102,16 +101,16 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
             return
         number = await pokemon_num(arg)
         embed = discord.Embed(color=0x45c6ee)
-        embed.set_author(name=f'{ctx.message.author}', icon_url=ctx.author.avatar_url)
+        embed.set_author(name=f'{ctx.message.author}', icon_url=ctx.author.avatar.url)
         embed.set_image(url=number[1])
-        embed.set_footer(text=f"Use {os.getenv('PREFIX')}pokemon {str(number[0])} for more info")
+        embed.set_footer(text=f"Use {PREFIX}pokemon {str(number[0])} for more info")
         embed.description = f"The Pokémon at number {arg} on the Pokédex is " + str(number[0])
         await ctx.send(embed=embed)
 
-    @commands.command(name='pokemon', brief='Search for a Pokémon by name', description=f'Get detailed information about a pokémon by name. \n Try ##pokemon ditto')
+    @commands.command(name='pokemon', brief='Search for a Pokémon by name', description=f'Get detailed information about a pokémon by name. \n Try {PREFIX}pokemon ditto')
     async def pokemon(self, ctx, *, arg=None):
         if not arg:
-            await ctx.send(f"{ctx.message.author.mention}\nThis command requires an additional argument\nTry:\n```{os.getenv('PREFIX')}pokemon ditto```")
+            await ctx.send(f"{ctx.message.author.mention}\nThis command requires an additional argument\nTry:\n```{PREFIX}pokemon ditto```")
             return
 
         out_list = await pokemom_name(arg.lower())
@@ -139,5 +138,5 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
         await ctx.send(embed=embed)
 
 
-def setup(client):
-    client.add_cog(Pokemon(client))
+async def setup(client):
+    await client.add_cog(Pokemon(client))

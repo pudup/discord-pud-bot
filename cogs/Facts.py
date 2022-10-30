@@ -1,5 +1,4 @@
 import discord
-from bs4 import BeautifulSoup
 from discord.ext import commands
 import aiohttp
 import random
@@ -30,10 +29,10 @@ class Facts(commands.Cog, name='Facts', description="catfact"):
     @commands.command(name='catfact', brief='Get a cat fact', description='This command gives you a random cat fact. Expect repetitions')
     async def catfact(self, ctx):
         embed = discord.Embed(title=await cat_facts(), color=await color())
-        embed.set_author(name=f"Cat fact for {ctx.message.author}", icon_url=ctx.author.avatar_url)
+        embed.set_author(name=f"Cat fact for {ctx.message.author}", icon_url=ctx.author.avatar.url)
         embed.set_thumbnail(url=await kittenthumb())
         await ctx.send(embed=embed)
 
 
-def setup(client):
-    client.add_cog(Facts(client))
+async def setup(client):
+    await client.add_cog(Facts(client))

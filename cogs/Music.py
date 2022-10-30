@@ -7,7 +7,8 @@ import aiohttp
 from youtube_search import YoutubeSearch
 import datetime
 import random
-
+import itertools
+from async_timeout import timeout
 
 
 ### HELPER FUNCTIONS
@@ -144,7 +145,7 @@ class MusicStreamer:
                                   description=f"Playing in {self.ctx.voice_client.channel}",
                                   color=await color())
             embed.set_author(name=f"Now Playing for {self.ctx.message.author}",
-                             icon_url=self.ctx.author.avatar_url)
+                             icon_url=self.ctx.author.avatar.url)
             embed.set_thumbnail(url=f"https://i.ytimg.com/vi_webp/{source.id}/maxresdefault.webp")
             embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=source.duration)))
             await asyncio.sleep(2)
@@ -158,7 +159,7 @@ class MusicStreamer:
             await self.play_next.wait()
 
 
-class Music(commands.Cog, name='Music', description="join, play, queue, skip, pause, resume, skipto, dequeue, stop"):
+class Music(commands.Cog, name='Music', description="play, queue, skip, pause, resume, skipto, dequeue, stop"):
 
     def __init__(self, client):
 
@@ -278,7 +279,7 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
                               description=f"Playing in {ctx.voice_client.channel}",
                               color=await color())
         embed.set_author(name=f"Now Playing for {ctx.message.author}",
-                         icon_url=ctx.author.avatar_url)
+                         icon_url=ctx.author.avatar.url)
         embed.set_thumbnail(url=f"https://i.ytimg.com/vi_webp/{streamer.id}/maxresdefault.webp")
         embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=streamer.duration)))
         await ctx.send(embed=embed)
@@ -305,7 +306,7 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
 
 
         if voice is None:
-            await ctx.send(f"{ctx.message.author.mention} use ```{prefix}join``` first")
+            await ctx.send(f"{ctx.message.author.mention} I'm not currently playing anything.\nUse ```{prefix}play``` first")
             return
 
         streamer = self.get_streamer(ctx)
@@ -416,7 +417,7 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
                                   description=f"{source.description}",
                                   color=await color())
             embed.set_author(name=f"Added to playlist by {ctx.message.author}",
-                             icon_url=ctx.author.avatar_url)
+                             icon_url=ctx.author.avatar.url)
             embed.set_thumbnail(url=f"https://i.ytimg.com/vi_webp/{source.id}/maxresdefault.webp")
             embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=source.duration)))
             embed.add_field(name='Help?', value=f"Use {prefix}queue to see entire playlist")
@@ -519,6 +520,6 @@ class Music(commands.Cog, name='Music', description="join, play, queue, skip, pa
             await ctx.send("Not currently playing")
 
 
-def setup(client):
-    client.add_cog(Music(client))
+async def setup(client):
+    await client.add_cog(Music(client))
 

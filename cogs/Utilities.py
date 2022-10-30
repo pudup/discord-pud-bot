@@ -1,10 +1,7 @@
 import discord
 from discord.ext import commands
 import random
-from discord_slash import cog_ext, SlashContext
-import os
 
-prefix = os.getenv("PREFIX")
 
 async def color():
     random_number = random.randint(0, 16777215)
@@ -29,11 +26,6 @@ class Utilities(commands.Cog, name='Utilities', description="ping"):
     #     await ctx.send(embed=embed)
 
 
-    # @commands.command(name='ReLoAd', description='Reloads', hidden=True)
-    # async def reload(self, ctx):
-    #     for guild in self.client.guilds:
-    #         await guild.text_channels[0].send(f"There you go madarchod Scammar")
 
-
-def setup(client):
-    client.add_cog(Utilities(client))
+async def setup(client):
+    await client.add_cog(Utilities(client))

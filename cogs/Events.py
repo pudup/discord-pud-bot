@@ -1,9 +1,10 @@
 import os
 import random
+import aiohttp
 import discord
 from discord.ext import commands, tasks
 
-presents = ["cat toy", "deadMau5", "slinky"]
+presents = ["cat toy", "deadMau5", "slinky", "piece of string", "ball of aluminium foil", "pigeon feather", "bit of dust"]
 prefix = os.getenv("PREFIX")
 
 
@@ -12,6 +13,15 @@ async def color():
     random_number = random.randint(0, 16777215)
     hex_number = hex(random_number)
     return int(hex_number, base=16)
+
+async def mock(message):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(f"https://api.popcat.xyz/mock?text={message}") as response:
+            json = await response.json()
+            text = json["text"]
+
+            return text
+
 
 class Events(commands.Cog):
     def __init__(self, client):
@@ -38,8 +48,15 @@ class Events(commands.Cog):
         if isinstance(error, commands.CommandNotFound):
             await ctx.send(f"I don't know this command. See my list of commands with ```{prefix}help```")
         else:
-            await ctx.send("I've encountered an error. Please try again.")
-            print(error)
+            if "unable to rename file: [Errno 2]" not in str(error):
+                await ctx.send("I've encountered an error. Please try again.")
+                jaby = await self.client.fetch_user("devIDhere")
+                command = ctx.invoked_with
+                await jaby.send("Got an error somewhere using the command: " + str(command) + " >>>> "  + str(error))
+            else:
+                jaby = await self.client.fetch_user("devIDhere")
+                command = ctx.invoked_with
+                await jaby.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -68,5 +85,5 @@ class Events(commands.Cog):
 
 
 
-def setup(client):
-    client.add_cog(Events(client))
+async def setup(client):
+    await client.add_cog(Events(client))
