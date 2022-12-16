@@ -9,3 +9,6 @@ Try it out on your server, or a test server with this link
 https://bit.ly/3pAUx6e
 
 This link gives the bot admin permissions so that any cog can work
+
+
+**This bot is currently running on an old android phone so do not expect high performance**
