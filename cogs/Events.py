@@ -4,15 +4,16 @@ import aiohttp
 import discord
 from discord.ext import commands, tasks
 
-presents = ["cat toy", "deadMau5", "slinky", "piece of string", "ball of aluminium foil", "pigeon feather", "bit of dust"]
+presents = ["cat toy", "deadMau5", "slinky", "piece of string", "ball of aluminium foil", "pigeon feather",
+            "bit of dust"]
 prefix = os.getenv("PREFIX")
-
 
 
 async def color():
     random_number = random.randint(0, 16777215)
     hex_number = hex(random_number)
     return int(hex_number, base=16)
+
 
 async def mock(message):
     async with aiohttp.ClientSession() as session:
@@ -27,13 +28,15 @@ class Events(commands.Cog):
     def __init__(self, client):
         self.client = client
 
-
     @commands.Cog.listener()
     async def on_ready(self):
         self.change_status.start()
         print(f"Bot is logged in as {self.client.user}")
-
-
+        try:
+            synced_commands = await self.client.tree.sync()
+            print(f"Synced {len(synced_commands)} command(s)")
+        except Exception as error:
+            print(f"Error syncing commands with: {error}")
 
     @tasks.loop(seconds=20)
     async def change_status(self):
@@ -46,17 +49,17 @@ class Events(commands.Cog):
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
         if isinstance(error, commands.CommandNotFound):
-            await ctx.send(f"I don't know this command. See my list of commands with ```{prefix}help```")
+            await ctx.send(f"All my commands are now slash commands.\nTry ```/help```")
         else:
             if "unable to rename file: [Errno 2]" not in str(error):
                 await ctx.send("I've encountered an error. Please try again.")
-                jaby = await self.client.fetch_user("devIDhere")
+                devID = await self.client.fetch_user("devIDHere")
                 command = ctx.invoked_with
-                await jaby.send("Got an error somewhere using the command: " + str(command) + " >>>> "  + str(error))
+                await devID.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
             else:
-                jaby = await self.client.fetch_user("devIDhere")
+                devID = await self.client.fetch_user("devIDHere")
                 command = ctx.invoked_with
-                await jaby.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
+                await devID.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
@@ -66,7 +69,6 @@ class Events(commands.Cog):
         except:
             await guild.text_channels[0].send(
                 f'Thanks for inviting me to your server! Use {prefix}help to find out how I work')
-
 
     @commands.Cog.listener()
     async def on_message(self, message):
@@ -82,7 +84,6 @@ class Events(commands.Cog):
         if "yay" in message.content.lower():
             await message.channel.send(
                 f"Yay")
-
 
 
 async def setup(client):

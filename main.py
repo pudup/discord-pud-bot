@@ -3,28 +3,28 @@ import os
 import random
 import discord
 from discord.ext import commands
-from pretty_help import DefaultMenu, PrettyHelp
-
+from pretty_help import PrettyHelp, EmojiMenu
 
 TOKEN = os.getenv("TOKEN")
+
 
 def color():
     random_number = random.randint(0, 16777215)
     hex_number = hex(random_number)
     return int(hex_number, base=16)
 
-prefix = os.getenv("PREFIX")
-help_command = commands.DefaultHelpCommand(no_category=f'prefix -> {prefix}')
 
+prefix = os.getenv("PREFIX")
 
 client = commands.Bot(command_prefix=prefix, intents=discord.Intents.all())
-menu = DefaultMenu('◀️', '▶️', '❌') # You can copy-paste any icons you want.
+menu = EmojiMenu('◀️', '▶️', '❌')  # You can copy-paste any icons you want.
 client.help_command = PrettyHelp(navigation=menu, color=0x45c6ee)
+
 
 async def load_extensions():
     for file in os.listdir("./cogs"):
         if file.endswith(".py"):
-            await client.load_extension(f"cogs.{file[:-3]}") # cut off the .py from the file name
+            await client.load_extension(f"cogs.{file[:-3]}")  # cut off the .py from the file name
 
 
 # @client.command(name='reload', hidden=True)
@@ -39,9 +39,17 @@ async def load(ctx):
         await ctx.message.delete()
         await respond.delete()
 
+
+# @client.command(name='announce', hidden=True)
+async def announce(ctx):
+    for guild in ctx.bot.guilds:
+        await guild.text_channels[0].send("")
+
+
 async def main():
     async with client:
         await load_extensions()
         await client.start(TOKEN)
+
 
 asyncio.run(main())

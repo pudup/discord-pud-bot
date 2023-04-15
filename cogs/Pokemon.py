@@ -1,16 +1,18 @@
 import os
 import random
 import discord
+from discord import app_commands
 from discord.ext import commands
 import aiohttp
 
-
 PREFIX = os.getenv('PREFIX')
+
 
 async def color():
     random_number = random.randint(0, 16777215)
     hex_number = hex(random_number)
     return int(hex_number, base=16)
+
 
 async def pokemon_num(index):
     async with aiohttp.ClientSession() as session:
@@ -18,6 +20,7 @@ async def pokemon_num(index):
             json = await response.json()
             pokename = json['forms'][0]['name'].title()
             return [pokename, f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{index}.png"]
+
 
 async def pokemom_name(name):
     async with aiohttp.ClientSession() as session:
@@ -67,55 +70,60 @@ async def pokemom_name(name):
             colour = colours[type[0]]
             try:
                 stats = {"hp": json['stats'][0]['base_stat'],
-                     "atk": json['stats'][1]['base_stat'],
-                     "spatk": json['stats'][2]['base_stat'],
-                     "def": json['stats'][3]['base_stat'],
-                     "spdef": json['stats'][4]['base_stat'],
-                     "speed": json['stats'][5]['base_stat'],}
+                         "atk": json['stats'][1]['base_stat'],
+                         "spatk": json['stats'][2]['base_stat'],
+                         "def": json['stats'][3]['base_stat'],
+                         "spdef": json['stats'][4]['base_stat'],
+                         "speed": json['stats'][5]['base_stat'], }
             except:
                 print("stats failed")
             weight = json['weight']
             pokedexid = json['id']
             height = int(json['height']) * 10
-            return [pokename, image_url, first_appear, base_ability, hidden_ability, stats, weight, pokedexid, type, colour, height]
-
+            return [pokename, image_url, first_appear, base_ability, hidden_ability, stats, weight, pokedexid, type,
+                    colour, height]
 
 
 class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
     def __init__(self, client):
         self.client = client
 
-    @commands.command(name='pokedex', brief='Get Pokémon from Pokédex', description=f'Get name of pokémon at pokédex number. \n Try {PREFIX}pokeindex {random.randint(1, 898)}')
-    async def pokedex(self, ctx, *, arg=None):
-        if not arg:
-            await ctx.send(
-                f"{ctx.message.author.mention}\nThis command requires an additional argument\nTry:\n```{PREFIX}pokedex {random.randint(1, 898)}```")
-            return
+    @app_commands.command(name='pokedex', description=f'Get name of pokémon at pokédex number.')
+    @app_commands.describe(index="Pokédex number")
+    async def pokedex(self, interaction: discord.Interaction, index: str) -> None:
+        # if not index:
+        #     await interaction.response.send_message(
+        #         f"{interaction.user.mention}\nThis command requires an additional argument\nTry:\n```/pokedex {random.randint(1, 898)}```")
+        #     return
         try:
-            arg = int(arg)
+            arg = int(index)
         except:
-            await ctx.send(f"{ctx.message.author.mention}\nInvalid entry")
+            await interaction.response.send_message(f"{interaction.user}\nInvalid index")
             return
-        if not 1 <= arg <= 898:
-            await ctx.send(f"{ctx.message.author.mention}\nThe Pokédex ranges from 1 to 898")
+        if not 1 <= arg <= 1010:
+            await interaction.response.send_message(f"{interaction.user}\nThe Pokédex ranges from 1 to 1010")
             return
         number = await pokemon_num(arg)
         embed = discord.Embed(color=0x45c6ee)
-        embed.set_author(name=f'{ctx.message.author}', icon_url=ctx.author.avatar.url)
+        embed.set_author(name=f'{interaction.user}', icon_url=interaction.user.display_avatar)
         embed.set_image(url=number[1])
-        embed.set_footer(text=f"Use {PREFIX}pokemon {str(number[0])} for more info")
+        embed.set_footer(text=f"Use /pokemon {str(number[0])} for more info")
         embed.description = f"The Pokémon at number {arg} on the Pokédex is " + str(number[0])
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
-    @commands.command(name='pokemon', brief='Search for a Pokémon by name', description=f'Get detailed information about a pokémon by name. \n Try {PREFIX}pokemon ditto')
-    async def pokemon(self, ctx, *, arg=None):
-        if not arg:
-            await ctx.send(f"{ctx.message.author.mention}\nThis command requires an additional argument\nTry:\n```{PREFIX}pokemon ditto```")
-            return
+    @app_commands.command(name='pokemon',
+                          description=f'Get detailed information about a pokémon by name. \n Try /pokemon ditto')
+    @app_commands.describe(name="Pokémon name")
+    async def pokemon(self, interaction: discord.Interaction, name: str) -> None:
+        # if not name:
+        #     await interaction.response.send_message(
+        #         f"{interaction.user}\nThis command requires an additional argument\nTry:\n```/pokemon ditto```")
+        #     return
 
-        out_list = await pokemom_name(arg.lower())
+        out_list = await pokemom_name(name.lower())
         if not out_list:
-            await ctx.send("I couldn't find what you're looking for. Try a number from 1-898")
+            await interaction.response.send_message(
+                "I couldn't find what you're looking for. Try a number from 1-898 if you don't know a name")
             return
         embed = discord.Embed(color=out_list[9])
         embed.set_author(name=out_list[0], icon_url=out_list[1])
@@ -135,7 +143,7 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
         embed.add_field(name='Height', value=f"{out_list[10]} cms")
 
         embed.set_footer(text="Now the colour matches the type :>\n-iPudup#2124")
-        await ctx.send(embed=embed)
+        await interaction.response.send_message(embed=embed)
 
 
 async def setup(client):
