@@ -14,9 +14,11 @@ async def color():
 async def pickup():
     async with aiohttp.ClientSession() as session:
         async with session.get("https://api.popcat.xyz/pickuplines") as response:
-            json = await response.json()
-            pickup = json["pickupline"]
-
+            if response.status == 200:
+                json = await response.json()
+                pickup = json["pickupline"]
+            else:
+                pickup = "I couldn't think of anything so just be yourself or something for once :>"
             return pickup
 
 
@@ -38,19 +40,25 @@ class Inspiration(commands.Cog, name='Inspiration', description="quote, pickup")
     @app_commands.command(name='quote',
                           description='Get a random inspirational quote from some, possibly famous, person.')
     async def quotey(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message("Searching...")
+        to_delete = await interaction.original_response()
         output = await quotes()
         embed = discord.Embed(color=await color())
         embed.set_author(name=output[0])
         embed.description = "-" + output[1]
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
+        await to_delete.delete()
 
     @app_commands.command(name='pickup', description='Get a 100% success rate pickup line')
     async def pickuper(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message("Hide yo women")
+        to_delete = await interaction.original_response()
         output = await pickup()
         embed = discord.Embed(color=await color())
         embed.set_author(name=f"EZ Tang for {interaction.user}", icon_url=interaction.user.display_avatar)
         embed.title = output
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
+        await to_delete.delete()
 
 
 async def setup(client):

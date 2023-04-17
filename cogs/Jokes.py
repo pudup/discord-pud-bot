@@ -17,16 +17,22 @@ async def dad_jokes():
     }
     async with aiohttp.ClientSession(headers=headers) as session:
         async with session.get("https://icanhazdadjoke.com/") as response:
-            json = await response.json()
-            joke = json['joke']
+            if response.status == 200:
+                json = await response.json()
+                joke = json['joke']
+            else:
+                joke = "I couldn't think of anything funny :<"
             return joke
 
 
 async def shower():
     async with aiohttp.ClientSession() as session:
         async with session.get("https://api.popcat.xyz/showerthoughts") as response:
-            json = await response.json()
-            thought = json['result']
+            if response.status == 200:
+                json = await response.json()
+                thought = json['result']
+            else:
+                thought = "I couldn't think of anything :<"
             return thought
 
 
@@ -36,15 +42,21 @@ class Jokes(commands.Cog, name='Jokes', description="dadjoke, think"):
 
     @app_commands.command(name='dadjoke', description="Get the bestest jokes :>")
     async def dadjoke(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message("👨‍👧‍👦")
+        to_delete = await interaction.original_response()
         embed = discord.Embed(title=await dad_jokes(), color=await color())
         embed.set_author(name=f"Free smiles for {interaction.user}", icon_url=interaction.user.display_avatar)
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
+        await to_delete.delete()
 
     @app_commands.command(name='think', description="I think therefore I am")
     async def showerthought(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message("Thinking...")
+        to_delete = await interaction.original_response()
         embed = discord.Embed(title=await shower(), color=await color())
         embed.set_author(name=f"Shower thought for {interaction.user}", icon_url=interaction.user.display_avatar)
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
+        await to_delete.delete()
 
 
 async def setup(client):

@@ -6,7 +6,8 @@ from discord.ext import commands, tasks
 
 presents = ["cat toy", "deadMau5", "slinky", "piece of string", "ball of aluminium foil", "pigeon feather",
             "bit of dust"]
-prefix = os.getenv("PREFIX")
+PREFIX = os.getenv("PREFIX")
+DEV_ID = os.getenv("DEV_ID")
 
 
 async def color():
@@ -44,7 +45,7 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
-        await member.send(f'Ello {member}. Welcome to {member.guild}. See what I can do for you with {prefix}help')
+        await member.send(f'Ello {member}. Welcome to {member.guild}. See what I can do for you with /help')
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
@@ -53,22 +54,22 @@ class Events(commands.Cog):
         else:
             if "unable to rename file: [Errno 2]" not in str(error):
                 await ctx.send("I've encountered an error. Please try again.")
-                devID = await self.client.fetch_user("devIDHere")
+                jaby = await self.client.fetch_user(DEV_ID)
                 command = ctx.invoked_with
-                await devID.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
+                await jaby.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
             else:
-                devID = await self.client.fetch_user("devIDHere")
+                jaby = await self.client.fetch_user(DEV_ID)
                 command = ctx.invoked_with
-                await devID.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
+                await jaby.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         try:
             joinchannel = guild.system_channel
-            await joinchannel.send(f'Thanks for inviting me to your server! Use {prefix}help to find out how I work')
+            await joinchannel.send(f'Thanks for inviting me to your server! Use /help to find out how I work')
         except:
             await guild.text_channels[0].send(
-                f'Thanks for inviting me to your server! Use {prefix}help to find out how I work')
+                f'Thanks for inviting me to your server! Use /help to find out how I work')
 
     @commands.Cog.listener()
     async def on_message(self, message):

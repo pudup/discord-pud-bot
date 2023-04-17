@@ -16,9 +16,12 @@ class Utilities(commands.Cog, name='Utilities', description="ping"):
 
     @app_commands.command(name='ping', description='This command returns bot latency')
     async def ping(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message("Pong!")
+        to_delete = await interaction.original_response()
         embed = discord.Embed(color=await color())
         embed.description = f"```Miau! \nLatency: {round(self.client.latency * 1000)}ms```"
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
+        await to_delete.delete()
 
 
 async def setup(client):

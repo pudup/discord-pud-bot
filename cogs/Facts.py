@@ -14,8 +14,11 @@ async def color():
 async def cat_facts():
     async with aiohttp.ClientSession() as session:
         async with session.get("https://catfact.ninja/fact") as response:
-            json = await response.json()
-            fact = json['fact']
+            if response.status == 200:
+                json = await response.json()
+                fact = json['fact']
+            else:
+                fact = "I couldn't find any new facts for some reason :<"
             return fact
 
 
@@ -32,10 +35,13 @@ class Facts(commands.Cog, name='Facts', description="catfact"):
 
     @app_commands.command(name='catfact', description='This command gives you a random cat fact. Expect repetitions')
     async def catfact(self, interaction: discord.Interaction) -> None:
+        await interaction.response.send_message("Here comes a free cat fact")
+        to_delete = await interaction.original_response()
         embed = discord.Embed(title=await cat_facts(), color=await color())
         embed.set_author(name=f"Cat fact for {interaction.user}", icon_url=interaction.user.display_avatar)
         embed.set_thumbnail(url=await kittenthumb())
-        await interaction.response.send_message(embed=embed)
+        await interaction.followup.send(embed=embed)
+        await to_delete.delete()
 
 
 async def setup(client):
