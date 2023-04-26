@@ -18,7 +18,7 @@ prefix = os.getenv("PREFIX")
 
 client = commands.Bot(command_prefix=prefix, intents=discord.Intents.all())
 menu = EmojiMenu('◀️', '▶️', '❌')  # You can copy-paste any icons you want.
-client.help_command = PrettyHelp(navigation=menu, color=0x45c6ee)
+client.help_command = PrettyHelp(navigation=menu, color=0x45c6ee, no_category='Help')
 
 
 async def load_extensions():
