@@ -32,7 +32,7 @@ async def shower():
                 json = await response.json()
                 thought = json['result']
             else:
-                thought = "I couldn't think of anything :<"
+                thought = "I couldn't think of anything :< Try again later"
             return thought
 
 

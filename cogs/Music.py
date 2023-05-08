@@ -168,7 +168,8 @@ class MusicStreamer:
             await self.play_next.wait()
 
 
-class Music(commands.Cog, name='Music', description="play, queue, skip, pause, resume, skipto, dequeue, stop"):
+class Music(commands.Cog, name='Music',
+            description="play, queue, next, pause, resume, skipto, dequeue, stop, playsingle"):
 
     def __init__(self, client):
 

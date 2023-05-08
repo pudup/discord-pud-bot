@@ -28,7 +28,7 @@ async def quotes():
             json = await response.json(content_type='application/json')
             quote = json[0]["q"]
             author = json[0]["a"]
-            final = quote + " " + "\n-" + author
+            # final = quote + " " + "\n-" + author
 
             return [quote, author]
 
@@ -51,7 +51,7 @@ class Inspiration(commands.Cog, name='Inspiration', description="quote, pickup")
 
     @app_commands.command(name='pickup', description='Get a 100% success rate pickup line')
     async def pickuper(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_message("Hide yo women")
+        await interaction.response.send_message("Hide yo women...")
         to_delete = await interaction.original_response()
         output = await pickup()
         embed = discord.Embed(color=await color())
