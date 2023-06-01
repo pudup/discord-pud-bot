@@ -285,11 +285,10 @@ class Music(commands.Cog, name='Music',
             else:
                 getting_message = await interaction.response.send_message(
                     f"{interaction.user.mention} " + "\n" + f"Getting this link <{track}>...")
-        async with interaction.channel.typing():
-            vc.stop()
-            streamer = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
-            self.streamers[server.id] = streamer
-            vc.play(streamer, after=lambda e: print(":<"))  # self.playnext(ctx))
+
+        vc.stop()
+        streamer = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
+        vc.play(streamer, after=lambda e: print(":<"))  # self.playnext(ctx))
 
         embed = discord.Embed(title=f"{streamer.title}", url=f"{streamer.web_url}",
                               description=f"Playing in {interaction.user.voice.channel}",
@@ -300,11 +299,22 @@ class Music(commands.Cog, name='Music',
         embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=streamer.duration)))
         await interaction.followup.send(embed=embed)
         await getting_message.delete()
-        await asyncio.sleep(5)
-        try:
-            await delete_songs(interaction.guild.id)
-        except:
-            pass
+        await asyncio.sleep(int(streamer.duration))
+        voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
+        if voice is None:
+            return
+        vchannel = interaction.guild.voice_client
+        if not interaction.guild.voice_client.is_playing():
+            await vchannel.disconnect()
+            try:
+                await delete_songs(interaction.guild.id)
+            except:
+                pass
+            server = interaction.guild
+            if server.id in self.streamers:
+                del self.streamers[server.id]
+        else:
+            return
 
     ##TODO Next
     @app_commands.command(name='next', description='Play next track in the playlist')

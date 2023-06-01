@@ -4,6 +4,7 @@ from discord import app_commands
 from discord.ext import commands
 import random
 import cohere
+import aiohttp
 
 
 async def color():
@@ -13,9 +14,10 @@ async def color():
 
 
 API_KEY = os.getenv("API_KEY")
+GPT_KEY = os.getenv("GPT_KEY")
 
 
-class NLP(commands.Cog, name='NLP', description="chat, summer"):
+class NLP(commands.Cog, name='NLP', description="chatgpt, chat, summer"):
     def __init__(self, client):
         self.client = client
 
@@ -60,6 +62,41 @@ class NLP(commands.Cog, name='NLP', description="chat, summer"):
         embed = discord.Embed(color=await color())
         embed.set_author(name=f"Summarising text for {interaction.user}", icon_url=interaction.user.display_avatar)
         embed.description = f"{str(response.summary)}"
+        await to_delete.delete()
+        await interaction.followup.send(embed=embed)
+
+    @app_commands.command(name='chatgpt', description='OpenAI\'s ChatGPT')
+    @app_commands.describe(text="Say anything")
+    async def chatgpt(self, interaction: discord.Interaction, text: str) -> None:
+        await interaction.response.send_message("Generating response...")
+        to_delete = await interaction.original_response()
+        url = "https://openai80.p.rapidapi.com/chat/completions"
+        headers = {
+            "Accept-Encoding": "gzip, deflate",
+            "content-type": "application/json",
+            "X-RapidAPI-Key": GPT_KEY,
+            "X-RapidAPI-Host": "openai80.p.rapidapi.com"
+        }
+        payload = {
+            "model": "gpt-3.5-turbo",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": text,
+                }
+            ]
+        }
+        async with aiohttp.ClientSession(headers=headers) as session:
+            async with session.post(url=url, json=payload) as response:
+                if response.status == 200:
+                    json = await response.json()
+                    chat_response = json['choices'][0]['message']['content']
+                else:
+                    chat_response = "I encountered an error, prolly too many requests. Try again later or try /chat"
+
+        embed = discord.Embed(color=await color())
+        embed.set_author(name=f"{interaction.user} said : {text}", icon_url=interaction.user.display_avatar)
+        embed.description = f"{str(chat_response)}"
         await to_delete.delete()
         await interaction.followup.send(embed=embed)
 
