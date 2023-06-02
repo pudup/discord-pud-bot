@@ -1,22 +1,13 @@
 import asyncio
 import os
-import random
 import discord
 from discord.ext import commands
 from pretty_help import PrettyHelp
 
 TOKEN = os.getenv("TOKEN")
+PREFIX = os.getenv("PREFIX")
 
-
-def color():
-    random_number = random.randint(0, 16777215)
-    hex_number = hex(random_number)
-    return int(hex_number, base=16)
-
-
-prefix = os.getenv("PREFIX")
-
-client = commands.Bot(command_prefix=prefix, intents=discord.Intents.all())
+client = commands.Bot(command_prefix=PREFIX, intents=discord.Intents.all())
 client.help_command = PrettyHelp(color=0x45c6ee, no_category='Help', dm_help=True)
 
 

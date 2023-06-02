@@ -5,18 +5,13 @@ import discord
 from discord.ext import commands, tasks
 
 presents = ["cat toy", "deadMau5", "slinky", "piece of string", "ball of aluminium foil", "pigeon feather",
-            "bit of dust"]
+            "bit of dust"]  # Random games being "played" by the bot in its status
 PREFIX = os.getenv("PREFIX")
-DEV_ID = os.getenv("DEV_ID")
-
-
-async def color():
-    random_number = random.randint(0, 16777215)
-    hex_number = hex(random_number)
-    return int(hex_number, base=16)
+DEV_ID = os.getenv("DEV_ID")  # If you're making your own bot, use your ID account developer ID/Code here
 
 
 async def mock(message):
+    """Randomises the casing on input text"""
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://api.popcat.xyz/mock?text={message}") as response:
             json = await response.json()
@@ -26,11 +21,14 @@ async def mock(message):
 
 
 class Events(commands.Cog):
+    """A cog that constantly listens for various events that are unrelated to commands"""
+
     def __init__(self, client):
         self.client = client
 
     @commands.Cog.listener()
     async def on_ready(self):
+        """Is run when the bot starts/logs in"""
         self.change_status.start()
         print(f"Bot is logged in as {self.client.user}")
         try:
@@ -39,16 +37,20 @@ class Events(commands.Cog):
         except Exception as error:
             print(f"Error syncing commands with: {error}")
 
-    @tasks.loop(seconds=20)
+    @tasks.loop(seconds=20)  # Change the seconds value to change how often it executes
     async def change_status(self):
+        """Changes the bot status every X seconds. Uses the presents list from above"""
         await self.client.change_presence(activity=discord.Game(name="with a " + random.choice(presents)))
 
     @commands.Cog.listener()
     async def on_member_join(self, member):
+        """Executes whenever a new user joins a server that has this bot"""
         await member.send(f'Ello {member}. Welcome to {member.guild}. See what I can do for you with /help')
 
     @commands.Cog.listener()
     async def on_command_error(self, ctx, error):
+        """Executes whenever the bot encounters an error. Seems to only work with prefix commands and not with
+        slash commands"""
         if isinstance(error, commands.CommandNotFound):
             await ctx.send(f"All my commands are now slash commands.\nTry ```/help```")
         else:
@@ -64,6 +66,7 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
+        """The bot sends a message to the first text channel when it joins a server"""
         try:
             joinchannel = guild.system_channel
             await joinchannel.send(f'Thanks for inviting me to your server! Use /help to find out how I work')
@@ -73,19 +76,15 @@ class Events(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
-        if message.author == self.client.user:
+        """Reads all messages that it can and does things based on what it reads. If you're gon use this, keep it
+        polite and privacy-friendly"""
+        if message.author == self.client.user:  # This is required. Without this the bot will respond to its own messages
             return
-
-        server = message.guild
-
-        if "scammar" in message.content.lower():
-            await message.channel.send(
-                f"{message.author.mention} " + random.choice(["IBS-D", "Borger", "2-13 Phoenix"]))
 
         if "yay" in message.content.lower():
             await message.channel.send(
                 f"Yay")
 
 
-async def setup(client):
+async def setup(client):  # Required function to enable this cog
     await client.add_cog(Events(client))

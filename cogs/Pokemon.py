@@ -1,20 +1,15 @@
 import os
-import random
 import discord
 from discord import app_commands
 from discord.ext import commands
 import aiohttp
+from utils.utils import color
 
 PREFIX = os.getenv('PREFIX')
 
 
-async def color():
-    random_number = random.randint(0, 16777215)
-    hex_number = hex(random_number)
-    return int(hex_number, base=16)
-
-
 async def pokemon_num(index):
+    """Returns the name of the Pokémon and a URL to its image as strings in an array based on the Pokédex number given"""
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://pokeapi.co/api/v2/pokemon/{index}") as response:
             json = await response.json()
@@ -23,6 +18,7 @@ async def pokemon_num(index):
 
 
 async def pokemom_name(name):
+    """Returns an array containing a lot of information about a Pokémon based on input name"""
     async with aiohttp.ClientSession() as session:
         colours = {
             "normal": 0xA8A77A,
@@ -43,7 +39,7 @@ async def pokemom_name(name):
             "dark": 0x705746,
             "steel": 0xB7B7CE,
             "fairy": 0xD685AD,
-        }
+        }  # Hex colours for each Pokémon type for discord embed
         async with session.get(f"https://pokeapi.co/api/v2/pokemon/{name}") as response:
             try:
                 json = await response.json()
@@ -54,7 +50,7 @@ async def pokemom_name(name):
             try:
                 first_appear = json['game_indices'][0]['version']['name']
             except:
-                first_appear = "Gen 6+ I think"
+                first_appear = "Gen 6+ I think"  # The API didn't work at time of writing this for Gen6 and higher
             try:
                 base_ability = json['abilities'][0]['ability']['name']
             except:
@@ -85,18 +81,22 @@ async def pokemom_name(name):
 
 
 class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
+    """A cog for everything Pokémon"""
+
     def __init__(self, client):
         self.client = client
 
     @app_commands.command(name='pokedex', description=f'Get name of pokémon at pokédex number.')
-    @app_commands.describe(index = "Pokédex number")
+    @app_commands.describe(index="Pokédex number")
     async def pokedex(self, interaction: discord.Interaction, index: str) -> None:
-        # if not index:
-        #     await interaction.response.send_message(
-        #         f"{interaction.user.mention}\nThis command requires an additional argument\nTry:\n```/pokedex {random.randint(1, 898)}```")
-        #     return
+        """Responds with the Pokémon name and its image"""
         await interaction.response.send_message("Searching...")
-        to_delete = await interaction.original_response()
+        # This response is here to avoid the discord slash command 3 second timeout.
+        # It could prolly be replaced with defer()
+
+        to_delete = await interaction.original_response()  # For deleting the message that was used to avoid timeout
+
+        # A check for what the user input
         try:
             arg = int(index)
         except:
@@ -107,29 +107,42 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
             await interaction.followup.send(f"{interaction.user}\nThe Pokédex ranges from 1 to 1010")
             await to_delete.delete()
             return
+
+        # If valid input from user
         number = await pokemon_num(arg)
+
+        # Building the embed
         embed = discord.Embed(color=0x45c6ee)
         embed.set_author(name=f'{interaction.user}', icon_url=interaction.user.display_avatar)
         embed.set_image(url=number[1])
         embed.set_footer(text=f"Use /pokemon {str(number[0])} for more info")
         embed.description = f"The Pokémon at number {arg} on the Pokédex is " + str(number[0])
+
+        # Sending the embed and deleting the original response
         await interaction.followup.send(embed=embed)
         await to_delete.delete()
 
-    @app_commands.command(name='pokemon', description=f'Get detailed information about a pokémon by name. \n Try /pokemon ditto')
+    @app_commands.command(name='pokemon',
+                          description=f'Get detailed information about a pokémon by name. \n Try /pokemon ditto')
     @app_commands.describe(name="Pokémon name")
     async def pokemon(self, interaction: discord.Interaction, name: str) -> None:
-        # if not name:
-        #     await interaction.response.send_message(
-        #         f"{interaction.user}\nThis command requires an additional argument\nTry:\n```/pokemon ditto```")
-        #     return
+        """Responds with a lot of information about requested Pokémon"""
         await interaction.response.send_message("Searching...")
-        to_delete = await interaction.original_response()
+        # This response is here to avoid the discord slash command 3 second timeout.
+        # It could prolly be replaced with defer()
+
+        to_delete = await interaction.original_response()  # For deleting the message that was used to avoid timeout
+
+        # Checking if user input is valid|
         out_list = await pokemom_name(name.lower())
         if not out_list:
-            await interaction.followup.send("I couldn't find what you're looking for. Try a number from 1-898 if you don't know a name")
+            await interaction.followup.send(
+                "I couldn't find what you're looking for. Try a number from 1-898 if you don't know a name")
             await to_delete.delete()
             return
+
+        # If valid
+        # Building the embed
         embed = discord.Embed(color=out_list[9])
         embed.set_author(name=out_list[0], icon_url=out_list[1])
         embed.set_thumbnail(url=out_list[1])
@@ -148,9 +161,11 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
         embed.add_field(name='Height', value=f"{out_list[10]} cms")
 
         embed.set_footer(text="Now the colour matches the type :>\n-iPudup#2124")
+
+        # Sending the embed and deleting the original response
         await interaction.followup.send(embed=embed)
         await to_delete.delete()
 
 
-async def setup(client):
+async def setup(client):  # Required function to enable this cog
     await client.add_cog(Pokemon(client))

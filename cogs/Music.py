@@ -1,5 +1,4 @@
 import asyncio
-import json
 import os
 import discord
 import yt_dlp
@@ -8,19 +7,18 @@ from discord import app_commands
 import aiohttp
 from youtube_search import YoutubeSearch
 import datetime
-import random
+from utils.utils import color
 import itertools
 from async_timeout import timeout
+import json
+
+# TODO: Add docstrings and comments to this cog
+# This COG currently has no comments or docstrings and might be difficult to read through. Will be added later
+
 
 ### HELPER FUNCTIONS
 
 prefix = os.getenv('PREFIX')
-
-
-async def color():
-    random_number = random.randint(0, 16777215)
-    hex_number = hex(random_number)
-    return int(hex_number, base=16)
 
 
 async def delete_songs(server_id):
