@@ -21,7 +21,7 @@ class NLP(commands.Cog, name='NLP', description="chatgpt, chat, summer"):
     @app_commands.describe(text="Ask me a question")
     async def chat(self, interaction: discord.Interaction, text: str) -> None:
         """The cohere chat response command. Has pretty reasonable values set"""
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Cohere settings and input
@@ -48,10 +48,10 @@ class NLP(commands.Cog, name='NLP', description="chatgpt, chat, summer"):
     async def summer(self, interaction: discord.Interaction, text: str, style: str = '') -> None:
         """Summarises text that the user inputs and responds with it. User input needs to be 250 characters or more"""
         if len(text) < 250:  # Checking if the user input is not large enough
-            await interaction.response.defer(ephemeral=True, thinking=True)
+            await interaction.response.defer(thinking=True)
             await interaction.followup.send("Your text needs to be longer than 250 characters")
             return
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Cohere settings and input
@@ -78,7 +78,7 @@ class NLP(commands.Cog, name='NLP', description="chatgpt, chat, summer"):
     @app_commands.describe(text="Say anything")
     async def chatgpt(self, interaction: discord.Interaction, text: str) -> None:
         """A command that basically accesses ChatGPT API and responds with it"""
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Setting up the ChatGPT API

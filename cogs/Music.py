@@ -250,7 +250,7 @@ class Music(commands.Cog, name='Music',
         A command to get the bot to move to the voice channel that you are in
         Useful if the bot is already playing in another voice channel but otherwise not required
         """
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         if interaction.user.voice is None:
             await interaction.followup.send(f"Connect to a voice channel first")
             return
@@ -281,7 +281,7 @@ class Music(commands.Cog, name='Music',
         A command to play a single link or query without using the playlist queue
         """
         responded = False
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         if interaction.user.voice is None:
             await interaction.followup.send(f"{interaction.user.mention}\nConnect to a voice channel first")
             return
@@ -356,7 +356,7 @@ class Music(commands.Cog, name='Music',
         Skips to the next song in the playlist
         All it really does is end the current track and the streamer loop handles the rest
         """
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
         server = interaction.guild
 
@@ -390,7 +390,7 @@ class Music(commands.Cog, name='Music',
         """
         Skips to a specific track in the playlist
         """
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
         if voice is None:
             await interaction.followup.send("Not currently connected to/playing anything")
@@ -435,7 +435,7 @@ class Music(commands.Cog, name='Music',
         Executes all the relevant functions for searching for the track, downloading it and starting the streamer loop
         If a track is already playing, it adds the new one to the playlist instead
         """
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         if interaction.user.voice is None:
             await interaction.followup.send(f"{interaction.user.mention}\nConnect to a voice channel first")
             return
@@ -496,7 +496,7 @@ class Music(commands.Cog, name='Music',
         Removes a specific track from the queue
         It clears the entire queue if a value isn't provided
         """
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         try:
             number = int(number)
         except:
@@ -532,7 +532,7 @@ class Music(commands.Cog, name='Music',
         """
         Prints out the entire queue in a nice embed to whoever requests it
         """
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         streamer = self.get_streamer(interaction)
         if streamer.queue._queue:
             embed_queue = discord.Embed(title='Current queue', color=await color())
@@ -548,7 +548,7 @@ class Music(commands.Cog, name='Music',
         """
         Stops the streamer loop, destroys it, leaves the channel and deletes the song folder
         """
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
         if voice is None:
             await interaction.followup.send("But I no start :<")
@@ -570,7 +570,7 @@ class Music(commands.Cog, name='Music',
         """
         Pauses the voice loop using the inbuilt method
         """
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         if interaction.guild.voice_client:
             if interaction.guild.voice_client.is_playing():
                 await interaction.followup.send("Music Paused")
@@ -587,7 +587,7 @@ class Music(commands.Cog, name='Music',
         Resumes paused audio using the inbuilt method.
         Doesn't have a check for if anything is paused so does nothing if music isn't paused
         """
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         if interaction.guild.voice_client:
             if not interaction.guild.voice_client.is_playing():
                 await interaction.followup.send(

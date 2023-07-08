@@ -34,7 +34,7 @@ class Facts(commands.Cog, name='Facts', description="catfact"):
     @app_commands.command(name='catfact', description='This command gives you a random cat fact. Expect repetitions')
     async def catfact(self, interaction: discord.Interaction) -> None:
         """The command for random cat facts"""
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Building the embed

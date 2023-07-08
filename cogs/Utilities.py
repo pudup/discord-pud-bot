@@ -13,7 +13,7 @@ class Utilities(commands.Cog, name='Utilities', description="ping"):
     @app_commands.command(name='ping', description='This command returns bot latency')
     async def ping(self, interaction: discord.Interaction) -> None:
         """Responds to the user with the bots ping in milliseconds"""
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Building the embed

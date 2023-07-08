@@ -90,7 +90,7 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
     @app_commands.describe(index="Pokédex number")
     async def pokedex(self, interaction: discord.Interaction, index: str) -> None:
         """Responds with the Pokémon name and its image"""
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
 
@@ -122,7 +122,7 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
     @app_commands.describe(name="Pokémon name")
     async def pokemon(self, interaction: discord.Interaction, name: str) -> None:
         """Responds with a lot of information about requested Pokémon"""
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Checking if user input is valid|

@@ -47,7 +47,7 @@ class Images(commands.Cog, name='Images', description="kitten, meme"):
     @app_commands.command(name='kitten', description="GITTEN KITTEN")
     async def getkitten(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random kitten image"""
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Building the embed
@@ -61,7 +61,7 @@ class Images(commands.Cog, name='Images', description="kitten, meme"):
     @app_commands.command(name='meme', description="Dankest of memes")
     async def get_meme(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random meme"""
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
         title, meme = await get_memes()  # Get meme strings for embed

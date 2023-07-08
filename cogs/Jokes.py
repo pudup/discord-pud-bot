@@ -42,7 +42,7 @@ class Jokes(commands.Cog, name='Jokes', description="dadjoke, think"):
     @app_commands.command(name='dadjoke', description="Get the bestest jokes :>")
     async def dadjoke(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random dad joke"""
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Building the embed
@@ -54,7 +54,7 @@ class Jokes(commands.Cog, name='Jokes', description="dadjoke, think"):
 
     @app_commands.command(name='think', description="I think therefore I am")
     async def showerthought(self, interaction: discord.Interaction) -> None:
-        await interaction.response.defer(ephemeral=True, thinking=True)
+        await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Building the embed
