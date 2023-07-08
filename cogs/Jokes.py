@@ -42,27 +42,20 @@ class Jokes(commands.Cog, name='Jokes', description="dadjoke, think"):
     @app_commands.command(name='dadjoke', description="Get the bestest jokes :>")
     async def dadjoke(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random dad joke"""
-        await interaction.response.send_message("👨‍👧‍👦")
+        await interaction.response.defer(ephemeral=True, thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
-        # It could prolly be replaced with defer()
-
-        to_delete = await interaction.original_response()  # For deleting the message that was used to avoid timeout
 
         # Building the embed
         embed = discord.Embed(title=await dad_jokes(), color=await color())
         embed.set_author(name=f"Free smiles for {interaction.user}", icon_url=interaction.user.display_avatar)
 
-        # Sending the embed and deleting the original response
+        # Sending the embed
         await interaction.followup.send(embed=embed)
-        await to_delete.delete()
 
     @app_commands.command(name='think', description="I think therefore I am")
     async def showerthought(self, interaction: discord.Interaction) -> None:
-        await interaction.response.send_message("Thinking...")
+        await interaction.response.defer(ephemeral=True, thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
-        # It could prolly be replaced with defer()
-
-        to_delete = await interaction.original_response()  # For deleting the message that was used to avoid timeout
 
         # Building the embed
         embed = discord.Embed(title=await shower(), color=await color())
@@ -70,7 +63,6 @@ class Jokes(commands.Cog, name='Jokes', description="dadjoke, think"):
 
         # Sending the embed and deleting the original response
         await interaction.followup.send(embed=embed)
-        await to_delete.delete()
 
 
 async def setup(client):  # Required function to enable this cog

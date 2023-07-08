@@ -38,11 +38,8 @@ class Inspiration(commands.Cog, name='Inspiration', description="quote, pickup")
                           description='Get a random inspirational quote from some, possibly famous, person.')
     async def quotey(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random inspirational quote and its author"""
-        await interaction.response.send_message("Searching...")
+        await interaction.response.defer(ephemeral=True, thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
-        # It could prolly be replaced with defer()
-
-        to_delete = await interaction.original_response()  # For deleting the message that was used to avoid timeout
 
         output = await quotes()  # Get quote
 
@@ -51,18 +48,15 @@ class Inspiration(commands.Cog, name='Inspiration', description="quote, pickup")
         embed.set_author(name=output[0])
         embed.description = "-" + output[1]
 
-        # Sending the embed and deleting the original response
+        # Sending the embed
         await interaction.followup.send(embed=embed)
-        await to_delete.delete()
 
     @app_commands.command(name='pickup', description='Get a 100% success rate pickup line')
     async def pickuper(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random pickup line"""
-        await interaction.response.send_message("Hide yo women...")
+        await interaction.response.defer(ephemeral=True, thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
-        # It could prolly be replaced with defer()
 
-        to_delete = await interaction.original_response()  # For deleting the message that was used to avoid timeout
 
         output = await pickup()  # Get pickup line
 
@@ -71,9 +65,8 @@ class Inspiration(commands.Cog, name='Inspiration', description="quote, pickup")
         embed.set_author(name=f"EZ Tang for {interaction.user}", icon_url=interaction.user.display_avatar)
         embed.title = output
 
-        # Sending the embed and deleting the original response
+        # Sending the embed
         await interaction.followup.send(embed=embed)
-        await to_delete.delete()
 
 
 async def setup(client):  # Required function to enable this cog

@@ -90,22 +90,18 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
     @app_commands.describe(index="Pokédex number")
     async def pokedex(self, interaction: discord.Interaction, index: str) -> None:
         """Responds with the Pokémon name and its image"""
-        await interaction.response.send_message("Searching...")
+        await interaction.response.defer(ephemeral=True, thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
-        # It could prolly be replaced with defer()
 
-        to_delete = await interaction.original_response()  # For deleting the message that was used to avoid timeout
 
         # A check for what the user input
         try:
             arg = int(index)
         except:
             await interaction.followup.send(f"{interaction.user}\nInvalid index")
-            await to_delete.delete()
             return
         if not 1 <= arg <= 1010:
             await interaction.followup.send(f"{interaction.user}\nThe Pokédex ranges from 1 to 1010")
-            await to_delete.delete()
             return
 
         # If valid input from user
@@ -118,27 +114,22 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
         embed.set_footer(text=f"Use /pokemon {str(number[0])} for more info")
         embed.description = f"The Pokémon at number {arg} on the Pokédex is " + str(number[0])
 
-        # Sending the embed and deleting the original response
+        # Sending the embed
         await interaction.followup.send(embed=embed)
-        await to_delete.delete()
 
     @app_commands.command(name='pokemon',
                           description=f'Get detailed information about a pokémon by name. \n Try /pokemon ditto')
     @app_commands.describe(name="Pokémon name")
     async def pokemon(self, interaction: discord.Interaction, name: str) -> None:
         """Responds with a lot of information about requested Pokémon"""
-        await interaction.response.send_message("Searching...")
+        await interaction.response.defer(ephemeral=True, thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
-        # It could prolly be replaced with defer()
-
-        to_delete = await interaction.original_response()  # For deleting the message that was used to avoid timeout
 
         # Checking if user input is valid|
         out_list = await pokemom_name(name.lower())
         if not out_list:
             await interaction.followup.send(
                 "I couldn't find what you're looking for. Try a number from 1-898 if you don't know a name")
-            await to_delete.delete()
             return
 
         # If valid
@@ -162,9 +153,8 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
 
         embed.set_footer(text="Now the colour matches the type :>\n-iPudup#2124")
 
-        # Sending the embed and deleting the original response
+        # Sending the embed
         await interaction.followup.send(embed=embed)
-        await to_delete.delete()
 
 
 async def setup(client):  # Required function to enable this cog

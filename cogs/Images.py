@@ -47,29 +47,22 @@ class Images(commands.Cog, name='Images', description="kitten, meme"):
     @app_commands.command(name='kitten', description="GITTEN KITTEN")
     async def getkitten(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random kitten image"""
-        await interaction.response.send_message(f"Gitten Kitten...")
+        await interaction.response.defer(ephemeral=True, thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
-        # It could prolly be replaced with defer()
-
-        to_delete = await interaction.original_response()  # For deleting the message that was used to avoid timeout
 
         # Building the embed
         embed = discord.Embed(color=await color())
         embed.set_author(name=f"Gitten a Kitten for {interaction.user}", icon_url=interaction.user.display_avatar)
         embed.set_image(url=await get_kittens())
 
-        # Sending the embed and deleting the original response
+        # Sending the embed
         await interaction.followup.send(embed=embed)
-        await to_delete.delete()
 
     @app_commands.command(name='meme', description="Dankest of memes")
     async def get_meme(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random meme"""
-        await interaction.response.send_message(f"Fetching shitty meme...")
+        await interaction.response.defer(ephemeral=True, thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
-        # It could prolly be replaced with defer()
-
-        to_delete = await interaction.original_response()  # For deleting the message that was used to avoid timeout
 
         title, meme = await get_memes()  # Get meme strings for embed
 
@@ -79,9 +72,8 @@ class Images(commands.Cog, name='Images', description="kitten, meme"):
         embed.set_footer(text=title)
         embed.set_image(url=meme)
 
-        # Sending the embed and deleting the original response
+        # Sending the embed
         await interaction.followup.send(embed=embed)
-        await to_delete.delete()
 
 
 async def setup(client):  # Required function to enable this cog

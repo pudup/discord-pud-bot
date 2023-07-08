@@ -12,16 +12,16 @@ import itertools
 from async_timeout import timeout
 import json
 
+
 # TODO: Add docstrings and comments to this cog
 # This COG currently has no comments or docstrings and might be difficult to read through. Will be added later
 
 
 ### HELPER FUNCTIONS
 
-prefix = os.getenv('PREFIX')
-
 
 async def delete_songs(server_id):
+    """Deletes everything in the 'songs' folder. Keeps storage space down. Songs are re-downloaded when needed"""
     files = os.listdir(f"songs/{server_id}")
     for file in files:
         os.remove(f"songs/{server_id}/" + file)
@@ -29,11 +29,16 @@ async def delete_songs(server_id):
 
 
 async def search_youtube(query):
+    """Returns the url to the first video in a YouTube search query"""
     results = YoutubeSearch(query, max_results=1).to_dict()
     return f"https://www.youtube.com/{results[0]['url_suffix']}"
 
 
 async def is_link(query):
+    """
+    Checks if a given string is an http(s) link or not
+    Used by the play function to check if given input is a song name or a direct link
+    """
     try:
         async with aiohttp.ClientSession() as session:
             async with session.get(query) as response:
@@ -47,11 +52,15 @@ async def is_link(query):
 
 ### YOUTUBE FUNCTIONS ###
 
+# Most of the functions here are just copied and pasted from ytdl docs and don't really need modifications
+# I've written comments for whatever modifications I've made
+
 yt_dlp.utils.bug_reports_message = lambda: ''
 
 ytdl_format_options = {
     'format': 'bestaudio/best',
-    # 'outtmpl': 'songs/%(extractor)s-%(id)s-%(title)s.%(ext)s',
+    # 'outtmpl': 'songs/%(extractor)s-%(id)s-%(title)s.%(ext)s', # I've removed this part so that I can specify the
+    # location
     'restrictfilenames': True,
     'noplaylist': True,
     'nocheckcertificate': True,
@@ -86,6 +95,10 @@ class YTDLSource(discord.PCMVolumeTransformer):
     @classmethod
     async def from_url(cls, url, *, loop=None, stream=False, server_id):
         loop = loop or asyncio.get_event_loop()
+
+        # Here is why I removed the outtmpl format option
+        # This helps separate the song folder for different servers running the bot at the same time
+        # Keeps the bot from deleting the song folder of another server
         ytdl.params['outtmpl'] = f'songs/{server_id}/%(title)s.%(ext)s'
         with yt_dlp.YoutubeDL(ytdl_format_options) as ydl:
             data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=not stream))
@@ -103,32 +116,48 @@ class YTDLSource(discord.PCMVolumeTransformer):
 
 
 class MusicStreamer:
+    """
+    The object that is responsible to actually playing the music on a voice channel
+    It also handles queues
+    Not very complicated
+    """
+
     def __init__(self, interaction):
 
         self.interaction = interaction
 
-        self.queue = asyncio.Queue()
+        self.queue = asyncio.Queue()  # The playlist queue
         self.play_next = asyncio.Event()
 
         self.current_track = None
 
-        self.interaction.client.loop.create_task(self.main_streamer_loop())
+        self.interaction.client.loop.create_task(self.main_streamer_loop())  # The song streaming task loop
 
     async def audio_player_task(self):
+        """
+        Gets the next song from the queue and plays it
+        Waits for the next in the queue after finishing the track
+        """
         while True:
             self.play_next.clear()
             current = await self.queue.get()
             current.start()
             await self.play_next.wait()
 
-    def go_next_song(self):
-        self.interaction.client.loop.call_soon_threadsafe(self.play_next.set)
-
     async def main_streamer_loop(self):
+        """
+        The main loop function
+        Handles playing the current song and moving to the next after it ends
+
+        """
         await self.interaction.client.wait_until_ready()
         while not self.interaction.client.is_closed():
             self.play_next.clear()
 
+            # This part is commented out because it was a bit buggy
+            # It was used as a timeout for the bot if it was playing nothing for 60 seconds
+            # It was written without much thought and should prolly be rewritten so that's what you should do
+            # Don't use it
             # try:
             #     async with timeout(60):
             #         source = await self.queue.get()
@@ -138,9 +167,9 @@ class MusicStreamer:
             #     return
 
             source = await self.queue.get()
-
             server = self.interaction.guild
             vc = server.voice_client
+
             try:
                 vc.stop()
             except:
@@ -158,6 +187,8 @@ class MusicStreamer:
             embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=source.duration)))
             await asyncio.sleep(2)
             self.current_track = await self.interaction.followup.send(embed=embed)
+
+            # Commented out because it can sometimes delete songs that are being downloaded. Written naively anwyay.
             # try:
             #     await delete_songs()
             # except:
@@ -168,13 +199,21 @@ class MusicStreamer:
 
 class Music(commands.Cog, name='Music',
             description="play, queue, next, pause, resume, skipto, dequeue, stop, playsingle"):
+    """
+    A cog for the music functionality in voice channels
+    Works with YouTube and SoundCloud for now
+    """
 
     def __init__(self, client):
 
         self.client = client
-        self.streamers = {}
+        self.streamers = {}  # To keep track of different streamer objects per server. Isn't strictly needed afaik.
 
     def get_streamer(self, interaction):
+        """
+        Returns the streamer object for the current server
+        Creates one if it doesn't exist and adds it to the streamers hashmap
+        """
         server = interaction.guild
         try:
             streamer = self.streamers[server.id]
@@ -186,6 +225,9 @@ class Music(commands.Cog, name='Music',
 
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
+        """
+        Constantly monitors the voice channel that it is in and leaves the channel if it is alone
+        """
         voice_state = member.guild.voice_client
         if voice_state is None:
             # Exiting if the bot it's not connected to a voice channel
@@ -204,11 +246,13 @@ class Music(commands.Cog, name='Music',
     @app_commands.command(name='move', description=f'Move to user voice channel.')
     @app_commands.guild_only()
     async def move(self, interaction: discord.Interaction) -> None:
-        # if ctx.guild is None:
-        #     await ctx.send("This isn't available in DMs")
-        #     return
+        """
+        A command to get the bot to move to the voice channel that you are in
+        Useful if the bot is already playing in another voice channel but otherwise not required
+        """
+        await interaction.response.defer(ephemeral=True, thinking=True)
         if interaction.user.voice is None:
-            await interaction.response.send_message(f"Connect to a voice channel first")
+            await interaction.followup.send(f"Connect to a voice channel first")
             return
         else:
             vchannel = interaction.user.voice.channel
@@ -216,35 +260,30 @@ class Music(commands.Cog, name='Music',
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
 
         if voice is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Joining {interaction.user.mention} in {interaction.user.voice.channel}")
             await vchannel.connect()
         else:
             if interaction.client in vchannel.members:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"I'm already connected to your channel {interaction.user.mention}. ```/stop``` me first")
                 return
             else:
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     f"Moving to {interaction.user.voice.channel} with {interaction.user}")
                 await vchannel.connect()
 
-    ##TODO Playsingle
     @app_commands.command(name='playsingle', description='Play a track without using the queue')
     @app_commands.guild_only()
     @app_commands.describe(track="Song name or link (youtube/soundcloud)")
     async def playsingle(self, interaction: discord.Interaction, track: str) -> None:
-        # if ctx.guild is None:
-        #     await ctx.send("This isn't available in DMs")
-        #     return
-
-        # if args == "":
-        #     await ctx.send(
-        #         f"Play/Add what?\nTry ```{prefix}play https://www.youtube.com/watch?v=dQw4w9WgXcQ``` or ```{prefix}add ncs```")
-        #     return
+        """
+        A command to play a single link or query without using the playlist queue
+        """
         responded = False
+        await interaction.response.defer(ephemeral=True, thinking=True)
         if interaction.user.voice is None:
-            await interaction.response.send_message(f"{interaction.user.mention}\nConnect to a voice channel first")
+            await interaction.followup.send(f"{interaction.user.mention}\nConnect to a voice channel first")
             return
         else:
             vchannel = interaction.user.voice.channel
@@ -252,18 +291,14 @@ class Music(commands.Cog, name='Music',
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
 
         if voice is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Joining {interaction.user.mention} in {interaction.user.voice.channel}")
             await vchannel.connect()
             responded = True
         else:
             if interaction.client.user not in vchannel.members:
-                await interaction.response.send_message(f"I'm already playing in {vchannel}. Use /move first")
+                await interaction.followup(f"I'm already playing in {vchannel}. Use /move first")
                 return
-        # if not args:
-        #     await interaction.response.send_message(
-        #         f"Play what?\nTry ```{prefix}playsingle https://www.youtube.com/watch?v=dQw4w9WgXcQ``` or ```{prefix}playsingle ncs```")
-        #     return
 
         server = interaction.guild
         vc = server.voice_client
@@ -273,7 +308,7 @@ class Music(commands.Cog, name='Music',
                 getting_message = await interaction.followup.send(
                     f"{interaction.user.mention} " + "\n" + f"Tryna find {track}...")
             else:
-                getting_message = await interaction.response.send_message(
+                getting_message = await interaction.followup.send(
                     f"{interaction.user.mention} " + "\n" + f"Tryna find {track}...")
             track = await search_youtube(track)
         else:
@@ -281,7 +316,7 @@ class Music(commands.Cog, name='Music',
                 getting_message = await interaction.followup.send(
                     f"{interaction.user.mention} " + "\n" + f"Getting this link <{track}>...")
             else:
-                getting_message = await interaction.response.send_message(
+                getting_message = await interaction.followup.send(
                     f"{interaction.user.mention} " + "\n" + f"Getting this link <{track}>...")
 
         vc.stop()
@@ -314,26 +349,25 @@ class Music(commands.Cog, name='Music',
         else:
             return
 
-    ##TODO Next
     @app_commands.command(name='next', description='Play next track in the playlist')
     @app_commands.guild_only()
     async def skip(self, interaction: discord.Interaction) -> None:
-
-        # if ctx.guild is None:
-        #     await ctx.send("This isn't available in DMs")
-        #     return
-
+        """
+        Skips to the next song in the playlist
+        All it really does is end the current track and the streamer loop handles the rest
+        """
+        await interaction.response.defer(ephemeral=True, thinking=True)
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
         server = interaction.guild
 
         if voice is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"{interaction.user.mention} I'm not currently playing anything.\nUse ```/play``` first")
             return
 
         streamer = self.get_streamer(interaction)
         if not streamer.queue._queue:
-            await interaction.response.send_message("Reached end of queue")
+            await interaction.followup.send("Reached end of queue")
             vc = server.voice_client
             if vc.is_playing():
                 vc.stop()
@@ -343,7 +377,7 @@ class Music(commands.Cog, name='Music',
 
         vc = server.voice_client
         if vc.is_playing():
-            await interaction.response.send_message("Skipping to next song")
+            await interaction.followup.send("Skipping to next song")
             message = await interaction.original_response()
             await message.delete(delay=2)
             vc.stop()
@@ -353,28 +387,25 @@ class Music(commands.Cog, name='Music',
     @app_commands.guild_only()
     @app_commands.describe(number="Queue number (use /queue)")
     async def skipto(self, interaction: discord.Interaction, number: str) -> None:
-        # if ctx.guild is None:
-        #     await ctx.send("This isn't available in DMs")
-        #     return
+        """
+        Skips to a specific track in the playlist
+        """
+        await interaction.response.defer(ephemeral=True, thinking=True)
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
         if voice is None:
-            await interaction.response.send_message("Not currently connected to/playing anything")
+            await interaction.followup.send("Not currently connected to/playing anything")
             return
 
         streamer = self.get_streamer(interaction)
         server = interaction.guild
         if not streamer.queue._queue:
-            await interaction.response.send_message("There's nothing in the queue")
+            await interaction.followup.send("There's nothing in the queue")
             return
 
-        # num = int(num) - 1
-        # if num <= -1:
-        #     await ctx.send(f"Gimme a track number. Get the playlist with ```{prefix}queue```")
-        #     return
         try:
             number = int(number)
         except:
-            await interaction.response.send_message("Invalid Entry")
+            await interaction.followup.send("Invalid Entry")
             return
         try:
             for _ in range(number - 1):
@@ -382,7 +413,7 @@ class Music(commands.Cog, name='Music',
 
             embed_queue = discord.Embed(title='Skipping to', color=await color())
             embed_queue.add_field(name=f'Track {number}', value=streamer.queue._queue[0].title, inline=False)
-            await interaction.response.send_message(embed=embed_queue)
+            await interaction.followup.send(embed=embed_queue)
             message = await interaction.original_response()
             await message.delete(delay=3)
             vc = server.voice_client
@@ -393,22 +424,20 @@ class Music(commands.Cog, name='Music',
 
 
         except:
-            await interaction.response.send_message("You provided a bad playlist index")
+            await interaction.followup.send("You provided a bad playlist index")
 
     @app_commands.command(name='play', description='Either plays a given song or adds one to the playlist')
     @app_commands.guild_only()
     @app_commands.describe(track="Song name or link (youtube/soundcloud)")
     async def play(self, interaction: discord.Interaction, track: str) -> None:
-        # if ctx.guild is None:
-        #     await ctx.send("This isn't available in DMs")
-        #     return
-        # if args == "":
-        #     await ctx.send(
-        #         f"Play/Add what?\nTry ```{prefix}play https://www.youtube.com/watch?v=dQw4w9WgXcQ``` or ```{prefix}add ncs```")
-        #     return
-        responded = False
+        """
+        The main music command
+        Executes all the relevant functions for searching for the track, downloading it and starting the streamer loop
+        If a track is already playing, it adds the new one to the playlist instead
+        """
+        await interaction.response.defer(ephemeral=True, thinking=True)
         if interaction.user.voice is None:
-            await interaction.response.send_message(f"{interaction.user.mention}\nConnect to a voice channel first")
+            await interaction.followup.send(f"{interaction.user.mention}\nConnect to a voice channel first")
             return
         else:
             vchannel = interaction.user.voice.channel
@@ -416,13 +445,12 @@ class Music(commands.Cog, name='Music',
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
 
         if voice is None:
-            await interaction.response.send_message(
+            await interaction.followup.send(
                 f"Joining {interaction.user.mention} in {interaction.user.voice.channel}")
             await vchannel.connect()
-            responded = True
         else:
             if interaction.client.user not in vchannel.members:
-                await interaction.response.send_message(f"I'm already playing in {vchannel}. Use /move first")
+                await interaction.followup.send(f"I'm already playing in {vchannel}. Use /move first")
                 return
 
         streamer = self.get_streamer(interaction)
@@ -437,22 +465,14 @@ class Music(commands.Cog, name='Music',
             send_embed = True
 
         if not await is_link(track):
-            if responded:
-                getting_message = await interaction.followup.send(
-                    f"{interaction.user.mention} " + "\n" + f"Tryna find {track}...")
-            else:
-                getting_message = await interaction.response.send_message(
-                    f"{interaction.user.mention} " + "\n" + f"Tryna find {track}...")
+            await interaction.followup.send(
+                f"{interaction.user.mention} " + "\n" + f"Tryna find {track}...")
             track = await search_youtube(track)
             source = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
             await streamer.queue.put(source)
         else:
-            if responded:
-                getting_message = await interaction.followup.send(
-                    f"{interaction.user.mention} " + "\n" + f"Getting this link <{track}>...")
-            else:
-                getting_message = await interaction.response.send_message(
-                    f"{interaction.user.mention} " + "\n" + f"Getting this link <{track}>...")
+            await interaction.followup.send(
+                f"{interaction.user.mention} " + "\n" + f"Getting this link <{track}>...")
             source = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
             await streamer.queue.put(source)
 
@@ -467,30 +487,30 @@ class Music(commands.Cog, name='Music',
             embed.add_field(name='Help?', value=f"Use /queue to see entire playlist")
 
             await interaction.followup.send(embed=embed)
-        await getting_message.delete()
 
     @app_commands.command(name='dequeue', description='This command removes a track from the queue')
     @app_commands.guild_only()
     @app_commands.describe(number="Queue number (use /queue)")
     async def dequeue(self, interaction: discord.Interaction, number: str = "-1") -> None:
-        # if ctx.guild is None:
-        #     await ctx.send("This isn't available in DMs")
-        #     return
+        """
+        Removes a specific track from the queue
+        It clears the entire queue if a value isn't provided
+        """
+        await interaction.response.defer(ephemeral=True, thinking=True)
         try:
             number = int(number)
         except:
-            await interaction.response.send_message("Enter a number")
+            await interaction.followup.send("Enter a number")
             return
 
         streamer = self.get_streamer(interaction)
-        server = interaction.guild
         if not streamer.queue._queue:
-            await interaction.response.send_message("Queue is empty already")
+            await interaction.followup.send("Queue is empty already")
             return
         if number <= -1:
             for _ in range(len(streamer.queue._queue)):
                 del streamer.queue._queue[0]
-            await interaction.response.send_message("The queue has been emptied")
+            await interaction.followup.send("The queue has been emptied")
             return
         number = number - 1
 
@@ -500,38 +520,41 @@ class Music(commands.Cog, name='Music',
 
             for num, song in enumerate(streamer.queue._queue):
                 embed_queue.add_field(name=f'Track {num + 1}', value=song.title, inline=False)
-            await interaction.response.send_message(embed=embed_queue)
+            await interaction.followup.send(embed=embed_queue)
             return
         except:
-            await interaction.response.send_message("You provided a bad queue index")
+            await interaction.followup.send("You provided a bad queue index")
             return
 
     @app_commands.command(name='queue', description='This command returns the tracks in the playlist')
     @app_commands.guild_only()
     async def queue(self, interaction: discord.Interaction) -> None:
+        """
+        Prints out the entire queue in a nice embed to whoever requests it
+        """
+        await interaction.response.defer(ephemeral=True, thinking=True)
         streamer = self.get_streamer(interaction)
         if streamer.queue._queue:
             embed_queue = discord.Embed(title='Current queue', color=await color())
             for num, song in enumerate(streamer.queue._queue):
                 embed_queue.add_field(name=f'Track {num + 1}', value=song.title, inline=False)
-            await interaction.response.send_message(embed=embed_queue)
+            await interaction.followup.send(embed=embed_queue)
         else:
-            await interaction.response.send_message("Your queue is empty")
+            await interaction.followup.send("Your queue is empty")
 
-    ##TODO Stop
     @app_commands.command(name='stop', description='Stops playback, clears playlist and leaves the voice channel')
     @app_commands.guild_only()
     async def stop(self, interaction: discord.Interaction) -> None:
-
-        # if ctx.guild is None:
-        #     await ctx.send("This isn't available in DMs")
-        #     return
+        """
+        Stops the streamer loop, destroys it, leaves the channel and deletes the song folder
+        """
+        await interaction.response.defer(ephemeral=True, thinking=True)
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
         if voice is None:
-            await interaction.response.send_message("But I no start :<")
+            await interaction.followup.send("But I no start :<")
             return
         vchannel = interaction.guild.voice_client
-        await interaction.response.send_message("Kbye")
+        await interaction.followup.send("Kbye")
         await vchannel.disconnect()
         try:
             await delete_songs(interaction.guild.id)
@@ -541,39 +564,40 @@ class Music(commands.Cog, name='Music',
         if server.id in self.streamers:
             del self.streamers[server.id]
 
-    ##TODO Pause
     @app_commands.command(name='pause', description='Pause currently playing track')
     @app_commands.guild_only()
     async def pause(self, interaction: discord.Interaction) -> None:
-        # if ctx.guild is None:
-        #     await ctx.send("This isn't available in DMs")
-        #     return
+        """
+        Pauses the voice loop using the inbuilt method
+        """
+        await interaction.response.defer(ephemeral=True, thinking=True)
         if interaction.guild.voice_client:
             if interaction.guild.voice_client.is_playing():
-                await interaction.response.send_message("Music Paused")
+                await interaction.followup.send("Music Paused")
                 interaction.guild.voice_client.pause()
             else:
-                await interaction.response.send_message("Already paused")
+                await interaction.followup.send("Already paused")
         else:
-            await interaction.response.send_message("Not currently playing")
+            await interaction.followup.send("Not currently playing")
 
-    ##TODO Resume
     @app_commands.command(name='resume', description='Resume currently playing track')
     @app_commands.guild_only()
     async def resume(self, interaction: discord.Interaction) -> None:
-        # if ctx.guild is None:
-        #     await ctx.send("This isn't available in DMs")
-        #     return
+        """
+        Resumes paused audio using the inbuilt method.
+        Doesn't have a check for if anything is paused so does nothing if music isn't paused
+        """
+        await interaction.response.defer(ephemeral=True, thinking=True)
         if interaction.guild.voice_client:
             if not interaction.guild.voice_client.is_playing():
-                await interaction.response.send_message(
+                await interaction.followup.send(
                     "Music Resumed (May not play anything if there's nothing paused)")
                 interaction.guild.voice_client.resume()
             else:
-                await interaction.response.send_message("Already playing")
+                await interaction.followup.send("Already playing")
         else:
-            await interaction.response.send_message("Not currently playing")
+            await interaction.followup.send("Not currently playing")
 
 
-async def setup(client):
+async def setup(client):  # Required function to enable this cog
     await client.add_cog(Music(client))
