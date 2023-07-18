@@ -6,18 +6,10 @@ import aiohttp
 from utils.utils import color
 
 
-async def kittenthumb():
-    """Returns the URL to a random cat image from thecatapi API as a string"""
-    async with aiohttp.ClientSession() as session:
-        async with session.get("https://api.thecatapi.com/v1/images/search") as response:
-            text = await response.json()
-            return text[0]['url']
-
-
 async def get_kittens():
     """Returns the URL to a random kitten image from randomkittengenerator.com as a string"""
     async with aiohttp.ClientSession() as session:
-        async with session.get("http://www.randomkittengenerator.com/") as response:
+        async with session.get("https://www.randomkittengenerator.com/") as response:
             text = await response.read()
             soup = BeautifulSoup(text.decode('utf-8'), "html5lib")
             image_maybe = soup.find_all(class_="hot-random-image")
@@ -45,7 +37,7 @@ class Images(commands.Cog, name='Images', description="kitten, meme"):
         self.client = client
 
     @app_commands.command(name='kitten', description="GITTEN KITTEN")
-    async def getkitten(self, interaction: discord.Interaction) -> None:
+    async def get_kitten(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random kitten image"""
         await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.

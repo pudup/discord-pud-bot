@@ -36,6 +36,22 @@ class Events(commands.Cog):
             print(f"Synced {len(synced_commands)} command(s)")
         except Exception as error:
             print(f"Error syncing commands with: {error}")
+        dev = await self.client.fetch_user(DEV_ID)
+        with open("./tests/results.txt", "r") as results:
+            lines = results.read().splitlines()
+            reached = False
+            for line in lines:
+                if "short test summary info" in line:
+                    await dev.send("PYTEST SUMMARY")
+                    reached = True
+                    continue
+                if reached:
+                    if "====" in line:
+                        await dev.send(line.replace('=', ''))
+                    else:
+                        await dev.send(line)
+
+        print("Sent test results")
 
     @tasks.loop(seconds=20)  # Change the seconds value to change how often it executes
     async def change_status(self):

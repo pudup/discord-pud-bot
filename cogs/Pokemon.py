@@ -54,7 +54,7 @@ async def pokemom_name(name):
             try:
                 base_ability = json['abilities'][0]['ability']['name']
             except:
-                print("Base ability failed")
+                base_ability = "unknown"
             try:
                 hidden_ability = json['abilities'][1]['ability']['name']
             except:
@@ -62,7 +62,7 @@ async def pokemom_name(name):
             try:
                 type = [type['type']['name'] for type in json['types']]
             except:
-                print("Type failed")
+                type = "unknown"
             colour = colours[type[0]]
             try:
                 stats = {"hp": json['stats'][0]['base_stat'],
@@ -72,7 +72,12 @@ async def pokemom_name(name):
                          "spdef": json['stats'][4]['base_stat'],
                          "speed": json['stats'][5]['base_stat'], }
             except:
-                print("stats failed")
+                stats = {"hp": "unknown",
+                         "atk": "unknown",
+                         "spatk": "unknown",
+                         "def": "unknown",
+                         "spdef": "unknown",
+                         "speed": "unknown"}
             weight = json['weight']
             pokedexid = json['id']
             height = int(json['height']) * 10

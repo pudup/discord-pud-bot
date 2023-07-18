@@ -131,7 +131,14 @@ class MusicStreamer:
 
         self.current_track = None
 
-        self.interaction.client.loop.create_task(self.main_streamer_loop())  # The song streaming task loop
+        self.task_loop = self.interaction.client.loop.create_task(self.main_streamer_loop())  # The song streaming task loop
+
+    async def cleanup(self):
+        self.play_next.clear()
+        self.task_loop.cancel()
+        while not self.queue.empty():
+            self.queue.get_nowait()
+            self.queue.task_done()
 
     async def audio_player_task(self):
         """
@@ -241,6 +248,7 @@ class Music(commands.Cog, name='Music',
                 pass
             server = member.guild
             if server.id in self.streamers:
+                await self.streamers[server.id].cleanup()
                 del self.streamers[server.id]
 
     @app_commands.command(name='move', description=f'Move to user voice channel.')
@@ -345,6 +353,7 @@ class Music(commands.Cog, name='Music',
                 pass
             server = interaction.guild
             if server.id in self.streamers:
+                await self.streamers[server.id].cleanup()
                 del self.streamers[server.id]
         else:
             return
@@ -372,14 +381,13 @@ class Music(commands.Cog, name='Music',
             if vc.is_playing():
                 vc.stop()
                 if server.id in self.streamers:
+                    await self.streamers[server.id].cleanup()
                     del self.streamers[server.id]
             return
 
         vc = server.voice_client
         if vc.is_playing():
             await interaction.followup.send("Skipping to next song")
-            message = await interaction.original_response()
-            await message.delete(delay=2)
             vc.stop()
             return
 
@@ -414,8 +422,6 @@ class Music(commands.Cog, name='Music',
             embed_queue = discord.Embed(title='Skipping to', color=await color())
             embed_queue.add_field(name=f'Track {number}', value=streamer.queue._queue[0].title, inline=False)
             await interaction.followup.send(embed=embed_queue)
-            message = await interaction.original_response()
-            await message.delete(delay=3)
             vc = server.voice_client
 
             if vc.is_playing():
@@ -562,6 +568,7 @@ class Music(commands.Cog, name='Music',
             pass
         server = interaction.guild
         if server.id in self.streamers:
+            await self.streamers[server.id].cleanup()
             del self.streamers[server.id]
 
     @app_commands.command(name='pause', description='Pause currently playing track')

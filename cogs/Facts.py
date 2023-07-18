@@ -17,7 +17,7 @@ async def cat_facts():
             return fact
 
 
-async def kittenthumb():
+async def kitten_thumb():
     """Returns the URL to a random cat image from thecatapi API as a string"""
     async with aiohttp.ClientSession() as session:
         async with session.get("https://api.thecatapi.com/v1/images/search") as response:
@@ -40,7 +40,7 @@ class Facts(commands.Cog, name='Facts', description="catfact"):
         # Building the embed
         embed = discord.Embed(title=await cat_facts(), color=await color())
         embed.set_author(name=f"Cat fact for {interaction.user}", icon_url=interaction.user.display_avatar)
-        embed.set_thumbnail(url=await kittenthumb())
+        embed.set_thumbnail(url=await kitten_thumb())
 
         # Sending the embed
         await interaction.followup.send(embed=embed)
