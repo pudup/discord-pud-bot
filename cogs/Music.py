@@ -635,10 +635,9 @@ class Music(commands.Cog, name='Music',
         song_lyrics, song_title, song_artist = await get_lyrics(title, artist)
 
         # Building the embed
-        embed = discord.Embed(color=await color())
+        embed = discord.Embed(title=f"{song_title} by {song_artist}", color=await color())
         embed.set_author(name=f"Lyrics for {interaction.user}", icon_url=interaction.user.display_avatar)
-        embed.title(f"{song_title} by {song_artist}")
-        embed.description(song_lyrics)
+        embed.description = song_lyrics
 
         # Sending the embed
         await interaction.followup.send(embed=embed)
