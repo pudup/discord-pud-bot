@@ -3,7 +3,9 @@ from discord import app_commands
 from discord.ext import commands
 import aiohttp
 from utils.utils import color
+import os
 
+GPT_KEY = os.getenv("GPT_KEY")  # Shower Thoughts (rapidapi)
 
 async def dad_jokes():
     """Returns a random dad joke from the icanhazdadjoke API as a string"""
@@ -22,12 +24,17 @@ async def dad_jokes():
 
 async def shower():
     """Returns a random shower thought from the popcat API as a string. The API pulls it from r/showerthoughts.
-    This command might break after Reddit implements its ridiculous API pricing"""
-    async with aiohttp.ClientSession() as session:
-        async with session.get("https://api.popcat.xyz/showerthoughts") as response:
+    This command might break after Reddit implements its ridiculous API pricing
+    The command did break, and now it uses stapi-showerthoughts from rapidapi instead"""
+    headers = {
+        "X-RapidAPI-Key": GPT_KEY,
+        "X-RapidAPI-Host": "stapi-showerthoughts.p.rapidapi.com"
+    }
+    async with aiohttp.ClientSession(headers=headers) as session:
+        async with session.get("https://stapi-showerthoughts.p.rapidapi.com/api/v1/stapi/randomnew") as response:
             if response.status == 200:
                 json = await response.json()
-                thought = json['result']
+                thought = json['showerthought']
             else:
                 thought = "I couldn't think of anything :< Try again later"
             return thought
@@ -53,7 +60,7 @@ class Jokes(commands.Cog, name='Jokes', description="dadjoke, think"):
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(name='think', description="I think therefore I am")
-    async def showerthought(self, interaction: discord.Interaction) -> None:
+    async def shower_thought(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
 

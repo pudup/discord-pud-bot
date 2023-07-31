@@ -6,7 +6,7 @@ from utils.utils import color
 
 
 async def cat_facts():
-    """Returns a random catfact from the catfact.ninja API as a string"""
+    """Returns a random catfact from the 'catfact.ninja' API as a string"""
     async with aiohttp.ClientSession() as session:
         async with session.get("https://catfact.ninja/fact") as response:
             if response.status == 200:

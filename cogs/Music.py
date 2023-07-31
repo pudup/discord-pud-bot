@@ -8,17 +8,18 @@ import aiohttp
 from youtube_search import YoutubeSearch
 import datetime
 from utils.utils import color
-import itertools
-from async_timeout import timeout
-import json
+import azapi
+
+
+# import itertools
+# from async_timeout import timeout
+# import json
 
 
 # TODO: Add docstrings and comments to this cog
 # This COG currently has no comments or docstrings and might be difficult to read through. Will be added later
 
-
-### HELPER FUNCTIONS
-
+# HELPER FUNCTIONS
 
 async def delete_songs(server_id):
     """Deletes everything in the 'songs' folder. Keeps storage space down. Songs are re-downloaded when needed"""
@@ -48,9 +49,25 @@ async def is_link(query):
         return False
 
 
-### END OF HELPERS
+async def get_lyrics(title, artist):
+    """
+    azapi api for lyrics
+    Returns requests lyrics, title and artist in that order
+    """
+    lyrics_api = azapi.AZlyrics('google', accuracy=0.5)
 
-### YOUTUBE FUNCTIONS ###
+    if artist != "":
+        lyrics_api.artist = artist
+    lyrics_api.title = title
+
+    lyrics_api.getLyrics(save=False, ext='lrc')
+
+    return lyrics_api.lyrics, lyrics_api.title, lyrics_api.artist
+
+
+# END OF HELPERS
+
+# YOUTUBE FUNCTIONS ###
 
 # Most of the functions here are just copied and pasted from ytdl docs and don't really need modifications
 # I've written comments for whatever modifications I've made
@@ -112,7 +129,7 @@ class YTDLSource(discord.PCMVolumeTransformer):
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
 
 
-### END OF YOUTUBE ###
+# END OF YOUTUBE #
 
 
 class MusicStreamer:
@@ -131,7 +148,8 @@ class MusicStreamer:
 
         self.current_track = None
 
-        self.task_loop = self.interaction.client.loop.create_task(self.main_streamer_loop())  # The song streaming task loop
+        self.task_loop = self.interaction.client.loop.create_task(
+            self.main_streamer_loop())  # The song streaming task loop
 
     async def cleanup(self):
         self.play_next.clear()
@@ -205,7 +223,7 @@ class MusicStreamer:
 
 
 class Music(commands.Cog, name='Music',
-            description="play, queue, next, pause, resume, skipto, dequeue, stop, playsingle"):
+            description="play, queue, next, pause, resume, skipto, dequeue, stop, playsingle, lyrics"):
     """
     A cog for the music functionality in voice channels
     Works with YouTube and SoundCloud for now
@@ -224,7 +242,7 @@ class Music(commands.Cog, name='Music',
         server = interaction.guild
         try:
             streamer = self.streamers[server.id]
-        except Exception as e:
+        except Exception:
             streamer = MusicStreamer(interaction)
             self.streamers[server.id] = streamer
 
@@ -428,7 +446,6 @@ class Music(commands.Cog, name='Music',
                 vc.stop()
                 return
 
-
         except:
             await interaction.followup.send("You provided a bad playlist index")
 
@@ -605,6 +622,26 @@ class Music(commands.Cog, name='Music',
         else:
             await interaction.followup.send("Not currently playing")
 
+    @app_commands.command(name='lyrics', description='Get the lyrics to a song')
+    @app_commands.describe(title="Song name", artist="Artist name")
+    async def lyrics(self, interaction: discord.Interaction, title: str, artist: str = "") -> None:
+        """
+        Gets the lyrics to requested song using azapi
+        """
+        await interaction.response.defer(thinking=True)
+        # This response is here to avoid the discord slash command 3 second timeout.
+
+        # Getting lyrics
+        song_lyrics, song_title, song_artist = await get_lyrics(title, artist)
+
+        # Building the embed
+        embed = discord.Embed(color=await color())
+        embed.set_author(name=f"Lyrics for {interaction.user}", icon_url=interaction.user.display_avatar)
+        embed.title(f"{song_title} by {song_artist}")
+        embed.description(song_lyrics)
+
+        # Sending the embed
+        await interaction.followup.send(embed=embed)
 
 async def setup(client):  # Required function to enable this cog
     await client.add_cog(Music(client))

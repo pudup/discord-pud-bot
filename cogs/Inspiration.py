@@ -11,10 +11,10 @@ async def pickup():
         async with session.get("https://api.popcat.xyz/pickuplines") as response:
             if response.status == 200:
                 json = await response.json()
-                pickup = json["pickupline"]
+                pick_up = json["pickupline"]
             else:
-                pickup = "I couldn't think of anything so just be yourself or something for once :>"
-            return pickup
+                pick_up = "I couldn't think of anything so just be yourself or something for once :>"
+            return pick_up
 
 
 async def quotes():
@@ -56,7 +56,6 @@ class Inspiration(commands.Cog, name='Inspiration', description="quote, pickup")
         """Responds to the user with a random pickup line"""
         await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
-
 
         output = await pickup()  # Get pickup line
 

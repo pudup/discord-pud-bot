@@ -3,6 +3,7 @@ import random
 import aiohttp
 import discord
 from discord.ext import commands, tasks
+from utils.utils import  color
 
 presents = ["cat toy", "deadMau5", "slinky", "piece of string", "ball of aluminium foil", "pigeon feather",
             "bit of dust"]  # Random games being "played" by the bot in its status
@@ -37,19 +38,25 @@ class Events(commands.Cog):
         except Exception as error:
             print(f"Error syncing commands with: {error}")
         dev = await self.client.fetch_user(DEV_ID)
+        embed = discord.Embed(color=await color())
+        embed.set_author(name=f"PyTest results for {dev.name}", icon_url=dev.display_avatar)
         with open("./tests/results.txt", "r") as results:
             lines = results.read().splitlines()
-            reached = False
+            success = True
+            description = ""
             for line in lines:
                 if "short test summary info" in line:
-                    await dev.send("PYTEST SUMMARY")
-                    reached = True
+                    success = False
                     continue
-                if reached:
+                if not success:
                     if "====" in line:
-                        await dev.send(line.replace('=', ''))
+                        description += line.replace('=', '') + "\n"
                     else:
-                        await dev.send(line)
+                        description += line + "\n"
+            if success:
+                description = "All tests succeeded"
+        embed.title = description
+        await dev.send(embed=embed)
 
         print("Sent test results")
 

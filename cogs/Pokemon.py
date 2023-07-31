@@ -60,10 +60,10 @@ async def pokemom_name(name):
             except:
                 hidden_ability = "None"
             try:
-                type = [type['type']['name'] for type in json['types']]
+                pkm_type = [type['type']['name'] for type in json['types']]
             except:
-                type = "unknown"
-            colour = colours[type[0]]
+                pkm_type = "unknown"
+            colour = colours[pkm_type[0]]
             try:
                 stats = {"hp": json['stats'][0]['base_stat'],
                          "atk": json['stats'][1]['base_stat'],
@@ -81,7 +81,7 @@ async def pokemom_name(name):
             weight = json['weight']
             pokedexid = json['id']
             height = int(json['height']) * 10
-            return [pokename, image_url, first_appear, base_ability, hidden_ability, stats, weight, pokedexid, type,
+            return [pokename, image_url, first_appear, base_ability, hidden_ability, stats, weight, pokedexid, pkm_type,
                     colour, height]
 
 
@@ -97,7 +97,6 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
         """Responds with the Pokémon name and its image"""
         await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
-
 
         # A check for what the user input
         try:

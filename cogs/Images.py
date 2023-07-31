@@ -19,10 +19,10 @@ async def get_kittens():
 async def get_memes():
     """Returns the URL and title to a meme from the popcat API as strings"""
     async with aiohttp.ClientSession() as session:
-        async with session.get("https://api.popcat.xyz/meme") as response:
+        async with session.get("https://meme-api.com/gimme") as response:
             if response.status == 200:
                 json = await response.json()
-                meme = json["image"]
+                meme = json["url"]
                 title = json["title"]
             else:
                 meme = None

@@ -27,7 +27,7 @@ class NLP(commands.Cog, name='NLP', description="chatgpt, chat, summer"):
         # Cohere settings and input
         co = cohere.Client(API_KEY)
         response = co.generate(
-            model='command-xlarge-nightly',
+            model='command',
             prompt=text,
             max_tokens=300,
             temperature=0.9,
