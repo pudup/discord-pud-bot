@@ -16,5 +16,5 @@ This link gives the bot admin permissions so that any cog can work
 
 ~~**This bot is currently running on an old android phone so do not expect high performance**~~
 
-**Currently Offline** (Phone battery died)<br>
+**Currently Offline** (Phone battery died, gon upgrade to raspberry pi 5 when it's available)<br>
 Insert your own token in main.py and try it yourself if you want :>
