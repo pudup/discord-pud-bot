@@ -1,5 +1,7 @@
 import asyncio
 import os
+import random
+from async_timeout import timeout
 import discord
 import yt_dlp
 from discord.ext import commands
@@ -54,6 +56,7 @@ async def get_lyrics(title, artist):
     azapi api for lyrics
     Returns requests lyrics, title and artist in that order
     """
+
     lyrics_api = azapi.AZlyrics('google', accuracy=0.5)
 
     if artist != "":
@@ -62,7 +65,12 @@ async def get_lyrics(title, artist):
 
     lyrics_api.getLyrics(save=False, ext='lrc')
 
-    return lyrics_api.lyrics, lyrics_api.title, lyrics_api.artist
+    lyrics = lyrics_api.lyrics
+
+    if not lyrics:
+        lyrics = "I could not find a good match for this song :<"
+
+    return lyrics, lyrics_api.title, lyrics_api.artist
 
 
 # END OF HELPERS
@@ -139,14 +147,19 @@ class MusicStreamer:
     Not very complicated
     """
 
-    def __init__(self, interaction):
+    def __init__(self, interaction, streamers, server_id):
 
+        self.streamers = streamers
+        self.server_id = server_id
         self.interaction = interaction
 
         self.queue = asyncio.Queue()  # The playlist queue
         self.play_next = asyncio.Event()
 
         self.current_track = None
+        self.queue_setup = asyncio.Event()
+        self.queue_setup.set()
+        self.currently_downloading = []
 
         self.task_loop = self.interaction.client.loop.create_task(
             self.main_streamer_loop())  # The song streaming task loop
@@ -157,17 +170,10 @@ class MusicStreamer:
         while not self.queue.empty():
             self.queue.get_nowait()
             self.queue.task_done()
-
-    async def audio_player_task(self):
-        """
-        Gets the next song from the queue and plays it
-        Waits for the next in the queue after finishing the track
-        """
-        while True:
-            self.play_next.clear()
-            current = await self.queue.get()
-            current.start()
-            await self.play_next.wait()
+        try:
+            del self.streamers[self.server_id]
+        except:
+            pass
 
     async def main_streamer_loop(self):
         """
@@ -179,21 +185,21 @@ class MusicStreamer:
         while not self.interaction.client.is_closed():
             self.play_next.clear()
 
-            # This part is commented out because it was a bit buggy
-            # It was used as a timeout for the bot if it was playing nothing for 60 seconds
-            # It was written without much thought and should prolly be rewritten so that's what you should do
-            # Don't use it
-            # try:
-            #     async with timeout(60):
-            #         source = await self.queue.get()
-            # except asyncio.TimeoutError:
-            #     await self.ctx.send("I ran out of time, I'm outta here")
-            #     await self.ctx.cog.stop(self.ctx)
-            #     return
-
-            source = await self.queue.get()
             server = self.interaction.guild
             vc = server.voice_client
+
+            while True:
+                try:
+                    async with timeout(30):
+                        source = await self.queue.get()
+                        break
+                except asyncio.TimeoutError:
+                    if not self.currently_downloading:
+                        await self.interaction.followup.send("Too much silence for my tastes. I'll be back when needed")
+                        await vc.disconnect()
+                        await delete_songs(self.server_id)
+                        await self.cleanup()
+                        return
 
             try:
                 vc.stop()
@@ -202,7 +208,7 @@ class MusicStreamer:
             try:
                 vc.play(source, after=lambda _: self.interaction.client.loop.call_soon_threadsafe(self.play_next.set))
             except:
-                return
+                self.play_next.set()
             embed = discord.Embed(title=f"{source.title}", url=f"{source.web_url}",
                                   description=f"Playing in {vc.channel}",
                                   color=await color())
@@ -212,12 +218,6 @@ class MusicStreamer:
             embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=source.duration)))
             await asyncio.sleep(2)
             self.current_track = await self.interaction.followup.send(embed=embed)
-
-            # Commented out because it can sometimes delete songs that are being downloaded. Written naively anwyay.
-            # try:
-            #     await delete_songs()
-            # except:
-            #     pass
 
             await self.play_next.wait()
 
@@ -243,7 +243,7 @@ class Music(commands.Cog, name='Music',
         try:
             streamer = self.streamers[server.id]
         except Exception:
-            streamer = MusicStreamer(interaction)
+            streamer = MusicStreamer(interaction, self.streamers, server.id)
             self.streamers[server.id] = streamer
 
         return streamer
@@ -267,7 +267,6 @@ class Music(commands.Cog, name='Music',
             server = member.guild
             if server.id in self.streamers:
                 await self.streamers[server.id].cleanup()
-                del self.streamers[server.id]
 
     @app_commands.command(name='move', description=f'Move to user voice channel.')
     @app_commands.guild_only()
@@ -372,7 +371,6 @@ class Music(commands.Cog, name='Music',
             server = interaction.guild
             if server.id in self.streamers:
                 await self.streamers[server.id].cleanup()
-                del self.streamers[server.id]
         else:
             return
 
@@ -395,13 +393,21 @@ class Music(commands.Cog, name='Music',
         streamer = self.get_streamer(interaction)
         if not streamer.queue._queue:
             await interaction.followup.send("Reached end of queue")
-            vc = server.voice_client
-            if vc.is_playing():
-                vc.stop()
-                if server.id in self.streamers:
-                    await self.streamers[server.id].cleanup()
-                    del self.streamers[server.id]
-            return
+            if not streamer.currently_downloading:
+                vc = server.voice_client
+                if vc.is_playing():
+                    vc.stop()
+                    if server.id in self.streamers:
+                        await interaction.followup.send("I'll be back when needed with /play requests")
+                        await vc.disconnect()
+                        await self.streamers[server.id].cleanup()
+                return
+            else:
+                await interaction.followup.send("But there is another track being downloaded...")
+                vc = server.voice_client
+                if vc.is_playing():
+                    vc.stop()
+                    return
 
         vc = server.voice_client
         if vc.is_playing():
@@ -432,6 +438,9 @@ class Music(commands.Cog, name='Music',
             number = int(number)
         except:
             await interaction.followup.send("Invalid Entry")
+            return
+        if number > len(streamer.queue._queue):
+            await interaction.followup.send("There's nothing at that index. Check again with /queue")
             return
         try:
             for _ in range(number - 1):
@@ -480,8 +489,14 @@ class Music(commands.Cog, name='Music',
         server = interaction.guild
         vc = server.voice_client
 
+        if not streamer.queue_setup.is_set():
+            await interaction.followup.send(f"{interaction.user.mention}\nSetting up queue, gimme a moment")
+            await streamer.queue_setup.wait()
+
         if not streamer.queue._queue:
             send_embed = False
+            await asyncio.sleep(1)
+            streamer.queue_setup.clear()
         else:
             send_embed = True
         if not send_embed and vc.is_playing():
@@ -491,11 +506,15 @@ class Music(commands.Cog, name='Music',
             await interaction.followup.send(
                 f"{interaction.user.mention} " + "\n" + f"Tryna find {track}...")
             track = await search_youtube(track)
+            track_id = track + str(random.randint(0, int(1e7)))
+            streamer.currently_downloading.append(track_id)
             source = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
             await streamer.queue.put(source)
         else:
             await interaction.followup.send(
                 f"{interaction.user.mention} " + "\n" + f"Getting this link <{track}>...")
+            track_id = track + str(random.randint(0, int(1e7)))
+            streamer.currently_downloading.append(track_id)
             source = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
             await streamer.queue.put(source)
 
@@ -510,6 +529,10 @@ class Music(commands.Cog, name='Music',
             embed.add_field(name='Help?', value=f"Use /queue to see entire playlist")
 
             await interaction.followup.send(embed=embed)
+
+        await asyncio.sleep(1)
+        streamer.currently_downloading.remove(track_id)
+        streamer.queue_setup.set()
 
     @app_commands.command(name='dequeue', description='This command removes a track from the queue')
     @app_commands.guild_only()
@@ -586,7 +609,6 @@ class Music(commands.Cog, name='Music',
         server = interaction.guild
         if server.id in self.streamers:
             await self.streamers[server.id].cleanup()
-            del self.streamers[server.id]
 
     @app_commands.command(name='pause', description='Pause currently playing track')
     @app_commands.guild_only()
@@ -641,6 +663,7 @@ class Music(commands.Cog, name='Music',
 
         # Sending the embed
         await interaction.followup.send(embed=embed)
+
 
 async def setup(client):  # Required function to enable this cog
     await client.add_cog(Music(client))
