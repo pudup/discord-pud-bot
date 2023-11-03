@@ -439,7 +439,7 @@ class Music(commands.Cog, name='Music',
         except:
             await interaction.followup.send("Invalid Entry")
             return
-        if number > len(streamer.queue._queue):
+        if not 0 < number < len(streamer.queue._queue):
             await interaction.followup.send("There's nothing at that index. Check again with /queue")
             return
         try:
@@ -537,7 +537,7 @@ class Music(commands.Cog, name='Music',
     @app_commands.command(name='dequeue', description='This command removes a track from the queue')
     @app_commands.guild_only()
     @app_commands.describe(number="Queue number (use /queue)")
-    async def dequeue(self, interaction: discord.Interaction, number: str = "-1") -> None:
+    async def dequeue(self, interaction: discord.Interaction, number: str = "0") -> None:
         """
         Removes a specific track from the queue
         It clears the entire queue if a value isn't provided
@@ -553,7 +553,7 @@ class Music(commands.Cog, name='Music',
         if not streamer.queue._queue:
             await interaction.followup.send("Queue is empty already")
             return
-        if number <= -1:
+        if number <= 0:
             for _ in range(len(streamer.queue._queue)):
                 del streamer.queue._queue[0]
             await interaction.followup.send("The queue has been emptied")
