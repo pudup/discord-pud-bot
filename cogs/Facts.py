@@ -13,7 +13,7 @@ async def cat_facts():
                 json = await response.json()
                 fact = json['fact']
             else:
-                fact = "I couldn't find any new facts for some reason :<"
+                fact = "I couldn't think up any new facts for some reason :<"
             return fact
 
 

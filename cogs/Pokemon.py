@@ -155,8 +155,6 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
                                                  f"SPEED: {out_list[5]['speed']}")
         embed.add_field(name='Height', value=f"{out_list[10]} cms")
 
-        embed.set_footer(text="Now the colour matches the type :>\n-iPudup#2124")
-
         # Sending the embed
         await interaction.followup.send(embed=embed)
 

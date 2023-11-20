@@ -195,7 +195,7 @@ class MusicStreamer:
                         break
                 except asyncio.TimeoutError:
                     if not self.currently_downloading:
-                        await self.interaction.followup.send("Too much silence for my tastes. I'll be back when needed")
+                        await self.interaction.channel.send("Use /play when you need me again :>")
                         await vc.disconnect()
                         await delete_songs(self.server_id)
                         await self.cleanup()
@@ -217,7 +217,7 @@ class MusicStreamer:
             embed.set_thumbnail(url=f"https://i.ytimg.com/vi_webp/{source.id}/maxresdefault.webp")
             embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=source.duration)))
             await asyncio.sleep(2)
-            self.current_track = await self.interaction.followup.send(embed=embed)
+            self.current_track = await self.interaction.channel.send(embed=embed)
 
             await self.play_next.wait()
 
@@ -245,6 +245,8 @@ class Music(commands.Cog, name='Music',
         except Exception:
             streamer = MusicStreamer(interaction, self.streamers, server.id)
             self.streamers[server.id] = streamer
+            if interaction.channel == streamer.interaction.channel:
+                streamer.interaction = interaction
 
         return streamer
 
@@ -307,6 +309,9 @@ class Music(commands.Cog, name='Music',
         """
         responded = False
         await interaction.response.defer(thinking=True)
+        server = interaction.guild
+        if server.id in self.streamers:
+            await self.streamers[server.id].cleanup()
         if interaction.user.voice is None:
             await interaction.followup.send(f"{interaction.user.mention}\nConnect to a voice channel first")
             return
@@ -490,7 +495,8 @@ class Music(commands.Cog, name='Music',
         vc = server.voice_client
 
         if not streamer.queue_setup.is_set():
-            await interaction.followup.send(f"{interaction.user.mention}\nSetting up queue, gimme a moment")
+            await interaction.followup.send(
+                f"{interaction.user.mention}\nSetting up queue, I'll get to that in a moment")
             await streamer.queue_setup.wait()
 
         if not streamer.queue._queue:

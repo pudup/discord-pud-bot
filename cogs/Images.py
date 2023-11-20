@@ -26,7 +26,7 @@ async def get_memes():
                 title = json["title"]
             else:
                 meme = None
-                title = "I have failed you :< Try again later"
+                title = "I have failed you :<\nTry again later"
             return title, meme
 
 
