@@ -253,7 +253,7 @@ class Music(commands.Cog, name='Music',
         self.client = client
         self.streamers = {}  # To keep track of different streamer objects per server. Isn't strictly needed afaik.
 
-    def get_streamer(self, interaction):
+    async def get_streamer(self, interaction):
         """
         Returns the streamer object for the current server
         Creates one if it doesn't exist and adds it to the streamers hashmap
@@ -414,7 +414,7 @@ class Music(commands.Cog, name='Music',
                 await interaction.followup.send(f"I'm already playing in {vchannel}. Use /move first")
                 return
 
-        streamer = self.get_streamer(interaction)
+        streamer = await self.get_streamer(interaction)
         server = interaction.guild
         vc = server.voice_client
 
@@ -477,7 +477,7 @@ class Music(commands.Cog, name='Music',
                 "I'm not currently playing anything.\nUse ```/play```")
             return
 
-        streamer = self.get_streamer(interaction)
+        streamer = await self.get_streamer(interaction)
         vc = server.voice_client
         if not streamer.queue._queue:
             await interaction.followup.send("Reached end of queue")
@@ -514,7 +514,7 @@ class Music(commands.Cog, name='Music',
                 "I'm not currently playing anything.\nUse ```/play```")
             return
 
-        streamer = self.get_streamer(interaction)
+        streamer = await self.get_streamer(interaction)
         server = interaction.guild
         if not streamer.queue._queue:
             await interaction.followup.send("There's nothing in the queue")
@@ -564,7 +564,7 @@ class Music(commands.Cog, name='Music',
             await interaction.followup.send("Enter a number")
             return
 
-        streamer = self.get_streamer(interaction)
+        streamer = await self.get_streamer(interaction)
         if not streamer.queue._queue:
             await interaction.followup.send("Queue is empty already")
             return
@@ -599,7 +599,7 @@ class Music(commands.Cog, name='Music',
             await interaction.followup.send(
                 "I'm not currently playing anything.\nUse ```/play```")
             return
-        streamer = self.get_streamer(interaction)
+        streamer = await self.get_streamer(interaction)
         if streamer.queue._queue:
             embed_queue = discord.Embed(title='Current queue', color=await color())
             for num, song in enumerate(streamer.queue._queue):
@@ -699,7 +699,7 @@ class Music(commands.Cog, name='Music',
                 "I'm not currently playing anything.\nUse ```/play```")
             return
 
-        streamer = self.get_streamer(interaction)
+        streamer = await self.get_streamer(interaction)
         embed = streamer.current_track
         if not embed:
             await interaction.followup.send("Nothing currently playing")
