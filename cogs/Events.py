@@ -3,7 +3,7 @@ import random
 import aiohttp
 import discord
 from discord.ext import commands, tasks
-from utils.utils import  color
+from utils.utils import color
 
 presents = ["cat toy", "deadMau5", "slinky", "piece of string", "ball of aluminium foil", "pigeon feather",
             "bit of dust"]  # Random games being "played" by the bot in its status

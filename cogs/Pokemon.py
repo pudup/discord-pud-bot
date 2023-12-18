@@ -1,5 +1,6 @@
 import os
 import discord
+import requests.exceptions
 from discord import app_commands
 from discord.ext import commands
 import aiohttp
@@ -9,7 +10,8 @@ PREFIX = os.getenv('PREFIX')
 
 
 async def pokemon_num(index):
-    """Returns the name of the Pokémon and a URL to its image as strings in an array based on the Pokédex number given"""
+    """Returns the name of the Pokémon and a URL to its image as strings in an array based
+    on the Pokédex number given"""
     async with aiohttp.ClientSession() as session:
         async with session.get(f"https://pokeapi.co/api/v2/pokemon/{index}") as response:
             json = await response.json()
@@ -43,25 +45,25 @@ async def pokemom_name(name):
         async with session.get(f"https://pokeapi.co/api/v2/pokemon/{name}") as response:
             try:
                 json = await response.json()
-            except:
+            except requests.exceptions.JSONDecodeError:
                 return False
             pokename = json['forms'][0]['name'].title()
             image_url = json['sprites']['front_default']
             try:
                 first_appear = json['game_indices'][0]['version']['name']
-            except:
+            except KeyError:
                 first_appear = "Gen 6+ I think"  # The API didn't work at time of writing this for Gen6 and higher
             try:
                 base_ability = json['abilities'][0]['ability']['name']
-            except:
+            except KeyError:
                 base_ability = "unknown"
             try:
                 hidden_ability = json['abilities'][1]['ability']['name']
-            except:
+            except KeyError:
                 hidden_ability = "None"
             try:
-                pkm_type = [type['type']['name'] for type in json['types']]
-            except:
+                pkm_type = [pkm_type['type']['name'] for pkm_type in json['types']]
+            except KeyError:
                 pkm_type = "unknown"
             colour = colours[pkm_type[0]]
             try:
@@ -71,7 +73,7 @@ async def pokemom_name(name):
                          "def": json['stats'][3]['base_stat'],
                          "spdef": json['stats'][4]['base_stat'],
                          "speed": json['stats'][5]['base_stat'], }
-            except:
+            except KeyError:
                 stats = {"hp": "unknown",
                          "atk": "unknown",
                          "spatk": "unknown",
@@ -101,7 +103,7 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
         # A check for what the user input
         try:
             arg = int(index)
-        except:
+        except ValueError:
             await interaction.followup.send(f"{interaction.user}\nInvalid index")
             return
         if not 1 <= arg <= 1010:

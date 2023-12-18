@@ -2,22 +2,16 @@ import asyncio
 import os
 import random
 import time
-
 from async_timeout import timeout
 import discord
 import yt_dlp
 from discord.ext import commands
 from discord import app_commands
 import aiohttp
-from youtube_search import YoutubeSearch
 import datetime
+from ytpy import YoutubeDataApiV3Client
 from utils.utils import color
 import azapi
-
-
-# import itertools
-# from async_timeout import timeout
-# import json
 
 
 # TODO: Add docstrings and comments to this cog
@@ -27,24 +21,38 @@ import azapi
 
 async def delete_songs(server_id):
     """Deletes everything in the 'songs' folder. Keeps storage space down. Songs are re-downloaded when needed"""
-    files = os.listdir(f"songs/{server_id}")
-    for file in files:
-        os.remove(f"songs/{server_id}/" + file)
-    os.rmdir(f"songs/{server_id}/")
+    try:
+        files = os.listdir(f"songs/{server_id}")
+        for file in files:
+            os.remove(f"songs/{server_id}/" + file)
+        os.rmdir(f"songs/{server_id}/")
+    except FileNotFoundError:
+        return
 
 
 async def search_youtube(query):
     """Returns the url to the first video that isn't live in a YouTube search query"""
-    results = YoutubeSearch(query, max_results=30).to_dict()
+    session = aiohttp.ClientSession()
+
+    # Pass the aiohttp client session
+    youtube_search = YoutubeDataApiV3Client(session, dev_key=os.getenv("YOU_KEY"))
+
+    # Search
+    results = await youtube_search.search(q=query,
+                                          search_type="video",
+                                          max_results=30)
+    # Check if video is live
     i = 0
     while i < 30:
-        with yt_dlp.YoutubeDL(ytdl_format_options) as ydl:
-            if ydl.extract_info(f"https://www.youtube.com/{results[i]['url_suffix']}", download=False)[
-                'live_status'] == 'is_live':
-                i += 1
-            else:
-                break
-    return f"https://www.youtube.com/{results[i]['url_suffix']}"
+        if results['items'][i]['snippet']['liveBroadcastContent'] == 'live':
+            i += 1
+            if i == 30:
+                return "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+        else:
+            break
+
+    await session.close()
+    return f"https://www.youtube.com/watch?v={results['items'][i]['id']['videoId']}"
 
 
 async def is_link(query):
@@ -57,7 +65,18 @@ async def is_link(query):
             async with session.get(query) as response:
                 if response:
                     return True
-    except:
+    except aiohttp.client_exceptions.InvalidURL:
+        return False
+
+async def is_live(url):
+    session = aiohttp.ClientSession()
+    youtube_search = YoutubeDataApiV3Client(session, dev_key=os.getenv("YOU_KEY"))
+    results = await youtube_search.search(q=url,
+                                          search_type="video",
+                                          max_results=30)
+    if results['items'][0]['snippet']['liveBroadcastContent'] == 'live':
+        return True
+    else:
         return False
 
 
@@ -184,7 +203,7 @@ class MusicStreamer:
             self.queue.task_done()
         try:
             del self.streamers[self.server_id]
-        except:
+        except KeyError:
             pass
 
     async def main_streamer_loop(self):
@@ -219,12 +238,14 @@ class MusicStreamer:
 
             try:
                 vc.stop()
-            except:
+            except Exception as e:
+                print(e)
                 pass
             try:
                 vc.play(source, after=lambda _: self.interaction.client.loop.call_soon_threadsafe(self.play_next.set))
                 self.started_time = int(time.time())
-            except:
+            except Exception as e:
+                print(e)
                 self.play_next.set()
             embed = discord.Embed(title=f"{source.title}", url=f"{source.web_url}",
                                   description=f"Playing in {vc.channel}",
@@ -242,7 +263,7 @@ class MusicStreamer:
 
 
 class Music(commands.Cog, name='Music',
-            description="play, queue, next, pause, resume, skipto, dequeue, stop, playsingle, lyrics"):
+            description="play, queue, next, pause, resume, skipto, dequeue, stop, playsingle, lyrics, nowplaying"):
     """
     A cog for the music functionality in voice channels
     Works with YouTube and SoundCloud for now
@@ -281,10 +302,7 @@ class Music(commands.Cog, name='Music',
 
         if len(voice_state.channel.members) == 1:
             await voice_state.disconnect()
-            try:
-                await delete_songs(member.guild.id)
-            except:
-                pass
+            await delete_songs(member.guild.id)
             server = member.guild
             if server.id in self.streamers:
                 await self.streamers[server.id].cleanup()
@@ -319,9 +337,10 @@ class Music(commands.Cog, name='Music',
                     f"Moving to {interaction.user.voice.channel} with {interaction.user}")
                 await vchannel.connect()
 
-    @app_commands.command(name='playsingle', description='Play a track without using the queue')
+    @app_commands.command(name='playsingle',
+                          description='Play a track without using the queue (BUGGY AND UNMAINTAINED. USE /PLAY INSTEAD)')
     @app_commands.guild_only()
-    @app_commands.describe(track="Song name or link (youtube/soundcloud)")
+    @app_commands.describe(track="Song name or link (youtube/soundcloud) (BUGGY AND UNMAINTAINED. USE /PLAY INSTEAD)")
     async def playsingle(self, interaction: discord.Interaction, track: str) -> None:
         """
         A command to play a single link or query without using the playlist queue
@@ -377,10 +396,7 @@ class Music(commands.Cog, name='Music',
         vchannel = interaction.guild.voice_client
         if not interaction.guild.voice_client.is_playing():
             await vchannel.disconnect()
-            try:
-                await delete_songs(interaction.guild.id)
-            except:
-                pass
+            await delete_songs(interaction.guild.id)
             server = interaction.guild
             if server.id in self.streamers:
                 await self.streamers[server.id].cleanup()
@@ -397,6 +413,7 @@ class Music(commands.Cog, name='Music',
         If a track is already playing, it adds the new one to the playlist instead
         """
         await interaction.response.defer(thinking=True)
+        live_check = False
         if interaction.user.voice is None:
             await interaction.followup.send("Connect to a voice channel first")
             return
@@ -426,6 +443,7 @@ class Music(commands.Cog, name='Music',
             send_embed = False
             await asyncio.sleep(1)
             streamer.queue_setup.clear()
+            live_check = True
         else:
             send_embed = True
         if not send_embed and vc.is_playing():
@@ -434,16 +452,22 @@ class Music(commands.Cog, name='Music',
         if not await is_link(track):
             await interaction.followup.send(f"Tryna find {track} for {interaction.user}...")
             track = await search_youtube(track)
-            track_id = track + str(random.randint(0, int(1e7)))
+            track_id = track + str(random.randint(0, 1000000))
             streamer.currently_downloading.append(track_id)
             source = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
             await streamer.queue.put(source)
         else:
-            await interaction.followup.send(f"Getting this link <{track}> for {interaction.user}...")
-            track_id = track + str(random.randint(0, int(1e7)))
-            streamer.currently_downloading.append(track_id)
-            source = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
-            await streamer.queue.put(source)
+            if not await is_live(track):
+                await interaction.followup.send(f"Getting this link <{track}> for {interaction.user}...")
+                track_id = track + str(random.randint(0, int(1e7)))
+                streamer.currently_downloading.append(track_id)
+                source = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
+                await streamer.queue.put(source)
+            else:
+                await interaction.followup.send("This is a link to a livestream. I can't play this :<")
+                if live_check:
+                    streamer.queue_setup.set()
+                return
 
         if send_embed:
             embed = discord.Embed(title=f"{source.title}", url=f"{source.web_url}",
@@ -522,10 +546,10 @@ class Music(commands.Cog, name='Music',
 
         try:
             number = int(number)
-        except:
+        except ValueError:
             await interaction.followup.send("Invalid Entry")
             return
-        if not 0 < number < len(streamer.queue._queue):
+        if not 0 < number <= len(streamer.queue._queue):
             await interaction.followup.send("There's nothing at that index. Check again with /queue")
             return
         try:
@@ -541,7 +565,7 @@ class Music(commands.Cog, name='Music',
                 vc.stop()
                 return
 
-        except:
+        except IndexError:  # This is impossible to trigger from what I can tell. Will prolly remove this try block.
             await interaction.followup.send("You provided a bad playlist index")
 
     @app_commands.command(name='dequeue', description='This command removes a track from the queue')
@@ -560,7 +584,7 @@ class Music(commands.Cog, name='Music',
             return
         try:
             number = int(number)
-        except:
+        except ValueError:
             await interaction.followup.send("Enter a number")
             return
 
@@ -583,7 +607,7 @@ class Music(commands.Cog, name='Music',
                 embed_queue.add_field(name=f'Track {num + 1}', value=song.title, inline=False)
             await interaction.followup.send(embed=embed_queue)
             return
-        except:
+        except IndexError:
             await interaction.followup.send("You provided a bad queue index")
             return
 
@@ -622,10 +646,7 @@ class Music(commands.Cog, name='Music',
         vchannel = interaction.guild.voice_client
         await interaction.followup.send("Kbye")
         await vchannel.disconnect()
-        try:
-            await delete_songs(interaction.guild.id)
-        except:
-            pass
+        await delete_songs(interaction.guild.id)
         server = interaction.guild
         if server.id in self.streamers:
             await self.streamers[server.id].cleanup()
