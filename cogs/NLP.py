@@ -18,7 +18,7 @@ class NLP(commands.Cog, name='NLP', description="chatgpt, chat, summer"):
         self.client = client
 
     @app_commands.command(name='chat', description='Chat language processing model (beta)')
-    @app_commands.describe(text="Ask me a question")
+    @app_commands.describe(text="Say anything")
     async def chat(self, interaction: discord.Interaction, text: str) -> None:
         """The cohere chat response command. Has pretty reasonable values set"""
         await interaction.response.defer(thinking=True)
@@ -74,7 +74,7 @@ class NLP(commands.Cog, name='NLP', description="chatgpt, chat, summer"):
         # Sending the embed
         await interaction.followup.send(embed=embed)
 
-    @app_commands.command(name='chatgpt', description='OpenAI\'s ChatGPT')
+    @app_commands.command(name='chatgpt', description='OpenAI\'s ChatGPT (Rarely works, use /chat instead)')
     @app_commands.describe(text="Say anything")
     async def chatgpt(self, interaction: discord.Interaction, text: str) -> None:
         """A command that basically accesses ChatGPT API and responds with it"""
