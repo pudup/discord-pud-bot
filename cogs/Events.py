@@ -4,6 +4,7 @@ import aiohttp
 import discord
 from discord.ext import commands, tasks
 from utils.utils import color
+import aiofiles
 
 presents = ["cat toy", "deadMau5", "slinky", "piece of string", "ball of aluminium foil", "pigeon feather",
             "bit of dust"]  # Random games being "played" by the bot in its status
@@ -31,12 +32,18 @@ class Events(commands.Cog):
     async def on_ready(self):
         """Is run when the bot starts/logs in"""
         self.change_status.start()
-        print(f"Bot is logged in as {self.client.user}")
+        async with aiofiles.open('debug.txt', mode='a') as log:
+            await log.write("\n")
+            await log.write(f"Bot is logged in as {self.client.user}")
         try:
             synced_commands = await self.client.tree.sync()
-            print(f"Synced {len(synced_commands)} command(s)")
+            async with aiofiles.open('debug.txt', mode='a') as log:
+                await log.write("\n")
+                await log.write(f"Synced {len(synced_commands)} command(s)")
         except Exception as error:
-            print(f"Error syncing commands with: {error}")
+            async with aiofiles.open('debug.txt', mode='a') as log:
+                await log.write("\n")
+                await log.write(f"Error syncing commands with: {error}")
         dev = await self.client.fetch_user(DEV_ID)
         embed = discord.Embed(color=await color())
         embed.set_author(name=f"PyTest results for {dev.name}", icon_url=dev.display_avatar)
@@ -57,8 +64,9 @@ class Events(commands.Cog):
                 description = "All tests succeeded"
         embed.title = description
         await dev.send(embed=embed)
-
-        print("Sent test results")
+        async with aiofiles.open('debug.txt', mode='a') as log:
+            await log.write("\n")
+            await log.write("Sent test results")
 
     @tasks.loop(seconds=20)  # Change the seconds value to change how often it executes
     async def change_status(self):

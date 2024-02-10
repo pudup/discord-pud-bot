@@ -2,6 +2,7 @@ import asyncio
 import os
 import random
 import time
+import aiofiles
 from async_timeout import timeout
 import discord
 import yt_dlp
@@ -239,13 +240,17 @@ class MusicStreamer:
             try:
                 vc.stop()
             except Exception as e:
-                print(e)
+                async with aiofiles.open('debug.txt', mode='a') as log:
+                    await log.write("\n")
+                    await log.write(e)
                 pass
             try:
                 vc.play(source, after=lambda _: self.interaction.client.loop.call_soon_threadsafe(self.play_next.set))
                 self.started_time = int(time.time())
             except Exception as e:
-                print(e)
+                async with aiofiles.open('debug.txt', mode='a') as log:
+                    await log.write("\n")
+                    await log.write(e)
                 self.play_next.set()
             embed = discord.Embed(title=f"{source.title}", url=f"{source.web_url}",
                                   description=f"Playing in {vc.channel}",
