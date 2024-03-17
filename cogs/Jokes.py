@@ -24,18 +24,15 @@ async def dad_jokes():
 
 
 async def shower():
-    """Returns a random shower thought from the popcat API as a string. The API pulls it from r/showerthoughts.
-    This command might break after Reddit implements its ridiculous API pricing
-    The command did break, and now it uses stapi-showerthoughts from rapidapi instead"""
-    headers = {
-        "X-RapidAPI-Key": GPT_KEY,
-        "X-RapidAPI-Host": "stapi-showerthoughts.p.rapidapi.com"
-    }
-    async with aiohttp.ClientSession(headers=headers) as session:
-        async with session.get("https://stapi-showerthoughts.p.rapidapi.com/api/v1/stapi/randomnew") as response:
+    """
+    Returns a random shower thought from the popcat API as a string. The API pulls it from r/showerthoughts.
+    """
+
+    async with aiohttp.ClientSession() as session:
+        async with session.get("https://api.popcat.xyz/showerthoughts") as response:
             if response.status == 200:
                 json = await response.json()
-                thought = json['showerthought']
+                thought = json['result']
             else:
                 thought = "I couldn't think of anything :<\nTry again later"
             return thought

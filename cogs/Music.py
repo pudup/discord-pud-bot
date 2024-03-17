@@ -33,27 +33,21 @@ async def delete_songs(server_id):
 
 async def search_youtube(query):
     """Returns the url to the first video that isn't live in a YouTube search query"""
-    session = aiohttp.ClientSession()
+    final_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+    async with aiohttp.ClientSession() as session:
+        # Pass the aiohttp client session
+        youtube_search = YoutubeDataApiV3Client(session, dev_key=os.getenv("YOU_KEY"))
+        # Search
+        results = await youtube_search.search(q=query,
+                                              search_type="video",
+                                              max_results=30)
+        # Check if video is live
+        for item in results['items']:
+            if item['snippet']['liveBroadcastContent'] != 'live':
+                final_url = f"https://www.youtube.com/watch?v={item['id']['videoId']}"
+                break
 
-    # Pass the aiohttp client session
-    youtube_search = YoutubeDataApiV3Client(session, dev_key=os.getenv("YOU_KEY"))
-
-    # Search
-    results = await youtube_search.search(q=query,
-                                          search_type="video",
-                                          max_results=30)
-    # Check if video is live
-    i = 0
-    while i < 30:
-        if results['items'][i]['snippet']['liveBroadcastContent'] == 'live':
-            i += 1
-            if i == 30:
-                return "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
-        else:
-            break
-
-    await session.close()
-    return f"https://www.youtube.com/watch?v={results['items'][i]['id']['videoId']}"
+        return final_url
 
 
 async def is_link(query):
@@ -69,16 +63,18 @@ async def is_link(query):
     except aiohttp.client_exceptions.InvalidURL:
         return False
 
+
 async def is_live(url):
-    session = aiohttp.ClientSession()
-    youtube_search = YoutubeDataApiV3Client(session, dev_key=os.getenv("YOU_KEY"))
-    results = await youtube_search.search(q=url,
-                                          search_type="video",
-                                          max_results=30)
-    if results['items'][0]['snippet']['liveBroadcastContent'] == 'live':
-        return True
-    else:
-        return False
+    live = False
+    async with aiohttp.ClientSession() as session:
+        youtube_search = YoutubeDataApiV3Client(session, dev_key=os.getenv("YOU_KEY"))
+        results = await youtube_search.search(q=url,
+                                              search_type="video",
+                                              max_results=30)
+        if results['items'][0]['snippet']['liveBroadcastContent'] == 'live':
+            live = True
+
+        return live
 
 
 async def get_lyrics(title, artist):
@@ -241,16 +237,16 @@ class MusicStreamer:
                 vc.stop()
             except Exception as e:
                 async with aiofiles.open('debug.txt', mode='a') as log:
-                    await log.write("\n")
                     await log.write(e)
+                    await log.write("\n")
                 pass
             try:
                 vc.play(source, after=lambda _: self.interaction.client.loop.call_soon_threadsafe(self.play_next.set))
                 self.started_time = int(time.time())
             except Exception as e:
                 async with aiofiles.open('debug.txt', mode='a') as log:
-                    await log.write("\n")
                     await log.write(e)
+                    await log.write("\n")
                 self.play_next.set()
             embed = discord.Embed(title=f"{source.title}", url=f"{source.web_url}",
                                   description=f"Playing in {vc.channel}",

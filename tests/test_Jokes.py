@@ -11,4 +11,4 @@ async def test_dad_jokes():
 @pytest.mark.asyncio
 async def test_shower():
     response = await Jokes.shower()
-    assert response != "I couldn't think of anything :< Try again later"
+    assert response != "I couldn't think of anything :<\nTry again later"

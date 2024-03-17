@@ -5,6 +5,7 @@ import discord
 from discord.ext import commands, tasks
 from utils.utils import color
 import aiofiles
+from datetime import datetime
 
 presents = ["cat toy", "deadMau5", "slinky", "piece of string", "ball of aluminium foil", "pigeon feather",
             "bit of dust"]  # Random games being "played" by the bot in its status
@@ -33,17 +34,18 @@ class Events(commands.Cog):
         """Is run when the bot starts/logs in"""
         self.change_status.start()
         async with aiofiles.open('debug.txt', mode='a') as log:
+            time_now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+            await log.write(f"Bot is logged in as {self.client.user}" + f"-> {time_now}")
             await log.write("\n")
-            await log.write(f"Bot is logged in as {self.client.user}")
         try:
             synced_commands = await self.client.tree.sync()
             async with aiofiles.open('debug.txt', mode='a') as log:
-                await log.write("\n")
                 await log.write(f"Synced {len(synced_commands)} command(s)")
+                await log.write("\n")
         except Exception as error:
             async with aiofiles.open('debug.txt', mode='a') as log:
-                await log.write("\n")
                 await log.write(f"Error syncing commands with: {error}")
+                await log.write("\n")
         dev = await self.client.fetch_user(DEV_ID)
         embed = discord.Embed(color=await color())
         embed.set_author(name=f"PyTest results for {dev.name}", icon_url=dev.display_avatar)
@@ -65,8 +67,8 @@ class Events(commands.Cog):
         embed.title = description
         await dev.send(embed=embed)
         async with aiofiles.open('debug.txt', mode='a') as log:
-            await log.write("\n")
             await log.write("Sent test results")
+            await log.write("\n")
 
     @tasks.loop(seconds=20)  # Change the seconds value to change how often it executes
     async def change_status(self):
@@ -109,7 +111,7 @@ class Events(commands.Cog):
     async def on_message(self, message):
         """Reads all messages that it can and does things based on what it reads. If you're gon use this, keep it
         polite and privacy-friendly"""
-        if message.author == self.client.user: # This is required. Without this the bot will respond to its own messages
+        if message.author == self.client.user:  # This is required. Without this the bot will respond to its own messages
             return
 
         if "yay" in message.content.lower():

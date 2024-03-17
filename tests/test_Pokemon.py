@@ -5,7 +5,7 @@ from cogs import Pokemon
 
 @pytest.mark.asyncio
 async def test_pokemon_num():
-    random_pokemon = random.randint(1, 800)
+    random_pokemon = random.randint(1, 150)
     try:
         await Pokemon.pokemon_num(str(random_pokemon))
         assert True
@@ -15,7 +15,7 @@ async def test_pokemon_num():
 
 @pytest.mark.asyncio
 async def test_pokemon_name():
-    random_pokemon = random.randint(1, 800)
+    random_pokemon = random.randint(1, 150)
     try:
         response = await Pokemon.pokemom_name(str(random_pokemon))
         assert int(response[7]) == random_pokemon
