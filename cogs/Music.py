@@ -49,6 +49,31 @@ async def search_youtube(query):
 
         return final_url
 
+async def link_unshortener(url):
+    """
+    Finds final link in redirect chain
+    """
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url) as response:
+            if response:
+                return str(response.url)
+            else:
+                return ""
+
+async def clean_youtube_link(url):
+    """
+    Removes extra parameters from YouTube links
+    """
+    url, *_ = url.partition('&')
+    return url
+
+async def is_youtube(url):
+    """
+    Checks if a given link is a YouTube link or not
+    """
+    if "www.youtube.com" in url:
+        return True
+    return False
 
 async def is_link(query):
     """
@@ -66,6 +91,9 @@ async def is_link(query):
 
 async def is_live(url):
     live = False
+    if not await is_youtube(url):
+        return live
+    url = await clean_youtube_link(url)
     async with aiohttp.ClientSession() as session:
         youtube_search = YoutubeDataApiV3Client(session, dev_key=os.getenv("YOU_KEY"))
         results = await youtube_search.search(q=url,
@@ -74,7 +102,7 @@ async def is_live(url):
         if results['items'][0]['snippet']['liveBroadcastContent'] == 'live':
             live = True
 
-        return live
+    return live
 
 
 async def get_lyrics(title, artist):
@@ -151,13 +179,19 @@ class YTDLSource(discord.PCMVolumeTransformer):
         # This helps separate the song folder for different servers running the bot at the same time
         # Keeps the bot from deleting the song folder of another server
         ytdl.params['outtmpl'] = f'songs/{server_id}/%(title)s.%(ext)s'
-        with yt_dlp.YoutubeDL(ytdl_format_options) as ydl:
-            data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=not stream))
-            # Not sure why I need to make a different yt_dlp object here, but it doesn't work without it
+        try:
+            with yt_dlp.YoutubeDL(ytdl_format_options) as ydl:
+                data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=not stream))
+                # Not sure why I need to make a different yt_dlp object here, but it doesn't work without it
+        except yt_dlp.utils.DownloadError:
+            return False
 
-        if 'entries' in data:
-            # take first item from a playlist
-            data = data['entries'][0]
+        try:
+            if 'entries' in data:
+                # take first item from a playlist
+                data = data['entries'][0]
+        except IndexError:
+            return False
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
         return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
@@ -195,6 +229,7 @@ class MusicStreamer:
     async def cleanup(self):
         self.play_next.clear()
         self.task_loop.cancel()
+        await delete_songs(self.server_id)
         while not self.queue.empty():
             self.queue.get_nowait()
             self.queue.task_done()
@@ -229,7 +264,6 @@ class MusicStreamer:
                     if not self.currently_downloading:
                         await self.interaction.channel.send("Use /play when you need me again :>")
                         await vc.disconnect()
-                        await delete_songs(self.server_id)
                         await self.cleanup()
                         return
 
@@ -237,7 +271,7 @@ class MusicStreamer:
                 vc.stop()
             except Exception as e:
                 async with aiofiles.open('debug.txt', mode='a') as log:
-                    await log.write(e)
+                    await log.write(str(e))
                     await log.write("\n")
                 pass
             try:
@@ -245,7 +279,7 @@ class MusicStreamer:
                 self.started_time = int(time.time())
             except Exception as e:
                 async with aiofiles.open('debug.txt', mode='a') as log:
-                    await log.write(e)
+                    await log.write(str(e))
                     await log.write("\n")
                 self.play_next.set()
             embed = discord.Embed(title=f"{source.title}", url=f"{source.web_url}",
@@ -274,6 +308,7 @@ class Music(commands.Cog, name='Music',
 
         self.client = client
         self.streamers = {}  # To keep track of different streamer objects per server. Isn't strictly needed afaik.
+        self.voice_state_events = {}
 
     async def get_streamer(self, interaction):
         """
@@ -283,7 +318,7 @@ class Music(commands.Cog, name='Music',
         server = interaction.guild
         try:
             streamer = self.streamers[server.id]
-        except Exception:
+        except KeyError:
             streamer = MusicStreamer(interaction, self.streamers, server.id)
             self.streamers[server.id] = streamer
             if interaction.channel == streamer.interaction.channel:
@@ -291,22 +326,46 @@ class Music(commands.Cog, name='Music',
 
         return streamer
 
+    async def get_voice_state_event(self, member):
+        """
+        Returns the voice_state event object for the current server
+        Creates one if it doesn't exist and adds it to the voice_state hashmap
+        """
+        member_id = member.guild.id
+        try:
+            voice_state_event = self.voice_state_events[member_id]
+        except KeyError:
+            voice_state_event = asyncio.Event()
+            self.voice_state_events[member_id] = voice_state_event
+
+        return voice_state_event
+
     @commands.Cog.listener()
     async def on_voice_state_update(self, member, before, after):
         """
         Constantly monitors the voice channel that it is in and leaves the channel if it is alone
         """
         voice_state = member.guild.voice_client
+        wait_event = await self.get_voice_state_event(member)
         if voice_state is None:
             # Exiting if the bot it's not connected to a voice channel
+            del self.voice_state_events[member.guild.id]
             return
 
         if len(voice_state.channel.members) == 1:
-            await voice_state.disconnect()
-            await delete_songs(member.guild.id)
-            server = member.guild
-            if server.id in self.streamers:
-                await self.streamers[server.id].cleanup()
+            wait_event.clear()
+            try:
+                async with timeout(10):
+                    await wait_event.wait()
+            except asyncio.TimeoutError:
+                await voice_state.disconnect()
+                server = member.guild
+                if server.id in self.streamers:
+                    await self.streamers[server.id].cleanup()
+        else:
+            wait_event.set()
+            del self.voice_state_events[member.guild.id]
+            return
 
     @app_commands.command(name='move', description=f'Move to user voice channel.')
     @app_commands.guild_only()
@@ -397,7 +456,6 @@ class Music(commands.Cog, name='Music',
         vchannel = interaction.guild.voice_client
         if not interaction.guild.voice_client.is_playing():
             await vchannel.disconnect()
-            await delete_songs(interaction.guild.id)
             server = interaction.guild
             if server.id in self.streamers:
                 await self.streamers[server.id].cleanup()
@@ -458,11 +516,18 @@ class Music(commands.Cog, name='Music',
             source = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
             await streamer.queue.put(source)
         else:
+            track = await link_unshortener(track)
             if not await is_live(track):
                 await interaction.followup.send(f"Getting this link <{track}> for {interaction.user}...")
                 track_id = track + str(random.randint(0, int(1e7)))
                 streamer.currently_downloading.append(track_id)
                 source = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
+                if not source:
+                    await interaction.followup.send("Your link seems to be invalid to me\nTry another")
+                    streamer.currently_downloading.remove(track_id)
+                    if live_check:
+                        streamer.queue_setup.set()
+                    return
                 await streamer.queue.put(source)
             else:
                 await interaction.followup.send("This is a link to a livestream. I can't play this :<")
@@ -477,7 +542,7 @@ class Music(commands.Cog, name='Music',
             embed.set_author(name=f"Added to playlist by {interaction.user}",
                              icon_url=interaction.user.display_avatar)
             embed.set_thumbnail(url=f"https://i.ytimg.com/vi_webp/{source.id}/maxresdefault.webp")
-            embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=source.duration)))
+            embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=int(source.duration))))
             embed.add_field(name='Help?', value=f"Use /queue to see entire playlist")
 
             await interaction.channel.send(embed=embed)
@@ -647,7 +712,6 @@ class Music(commands.Cog, name='Music',
         vchannel = interaction.guild.voice_client
         await interaction.followup.send("Kbye")
         await vchannel.disconnect()
-        await delete_songs(interaction.guild.id)
         server = interaction.guild
         if server.id in self.streamers:
             await self.streamers[server.id].cleanup()
