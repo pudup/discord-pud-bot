@@ -49,6 +49,7 @@ async def search_youtube(query):
 
         return final_url
 
+
 async def link_unshortener(url):
     """
     Finds final link in redirect chain
@@ -60,12 +61,14 @@ async def link_unshortener(url):
             else:
                 return ""
 
+
 async def clean_youtube_link(url):
     """
     Removes extra parameters from YouTube links
     """
     url, *_ = url.partition('&')
     return url
+
 
 async def is_youtube(url):
     """
@@ -74,6 +77,7 @@ async def is_youtube(url):
     if "www.youtube.com" in url:
         return True
     return False
+
 
 async def is_link(query):
     """
@@ -99,8 +103,9 @@ async def is_live(url):
         results = await youtube_search.search(q=url,
                                               search_type="video",
                                               max_results=30)
-        if results['items'][0]['snippet']['liveBroadcastContent'] == 'live':
-            live = True
+        if results['items']:
+            if results['items'][0]['snippet']['liveBroadcastContent'] == 'live':
+                live = True
 
     return live
 
@@ -263,7 +268,8 @@ class MusicStreamer:
                 except asyncio.TimeoutError:
                     if not self.currently_downloading:
                         await self.interaction.channel.send("Use /play when you need me again :>")
-                        await vc.disconnect()
+                        await vc.disconnect(force=True)
+                        vc.cleanup()
                         await self.cleanup()
                         return
 
@@ -345,6 +351,7 @@ class Music(commands.Cog, name='Music',
         """
         Constantly monitors the voice channel that it is in and leaves the channel if it is alone
         """
+        _, __ = before, after  # Unused variables but required as parameters
         voice_state = member.guild.voice_client
         wait_event = await self.get_voice_state_event(member)
         if voice_state is None:
@@ -375,27 +382,37 @@ class Music(commands.Cog, name='Music',
         Useful if the bot is already playing in another voice channel but otherwise not required
         """
         await interaction.response.defer(thinking=True)
+        if not interaction.guild.voice_client:
+            await interaction.followup.send("I'm not playing anything. Use ```/play``` first")
+            return
         if interaction.user.voice is None:
             await interaction.followup.send(f"Connect to a voice channel first")
             return
         else:
             vchannel = interaction.user.voice.channel
 
-        voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
-
-        if voice is None:
+        if interaction.guild.me in vchannel.members:
             await interaction.followup.send(
-                f"Joining {interaction.user} in {interaction.user.voice.channel}")
-            await vchannel.connect()
+                f"I'm already connected to your channel {interaction.user}. Use ```/stop``` if you want me to leave")
+            return
         else:
-            if interaction.client in vchannel.members:
+            permissions = vchannel.permissions_for(interaction.guild.me)
+            if not permissions.connect or not permissions.speak:
                 await interaction.followup.send(
-                    f"I'm already connected to your channel {interaction.user}. ```/stop``` me first")
+                    f"I'm either missing the permission to connect or to speak in this channel: {interaction.user.voice.channel}")
                 return
+
+            await interaction.followup.send(
+                f"Moving to {interaction.user.voice.channel} with {interaction.user}")
+            voice_client = interaction.guild.voice_client
+            if voice_client.is_playing():
+                to_be_resumed = True
             else:
-                await interaction.followup.send(
-                    f"Moving to {interaction.user.voice.channel} with {interaction.user}")
-                await vchannel.connect()
+                to_be_resumed = False
+            await voice_client.move_to(vchannel)
+            if to_be_resumed:
+                await asyncio.sleep(1)  # To avoid a race condition
+                voice_client.resume()
 
     @app_commands.command(name='playsingle',
                           description='Play a track without using the queue (BUGGY AND UNMAINTAINED. USE /PLAY INSTEAD)')
@@ -424,7 +441,7 @@ class Music(commands.Cog, name='Music',
             await vchannel.connect()
         else:
             if interaction.client.user not in vchannel.members:
-                await interaction.followup(f"I'm already playing in {vchannel}. Use /move first")
+                await interaction.followup.send(f"I'm already playing in {vchannel}. Use /move first")
                 return
 
         server = interaction.guild
@@ -455,7 +472,8 @@ class Music(commands.Cog, name='Music',
             return
         vchannel = interaction.guild.voice_client
         if not interaction.guild.voice_client.is_playing():
-            await vchannel.disconnect()
+            await vchannel.disconnect(force=False)
+            vchannel.cleanup()
             server = interaction.guild
             if server.id in self.streamers:
                 await self.streamers[server.id].cleanup()
@@ -482,6 +500,12 @@ class Music(commands.Cog, name='Music',
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
 
         if voice is None:
+            permissions = vchannel.permissions_for(interaction.guild.me)
+            if not permissions.connect or not permissions.speak:
+                await interaction.followup.send(
+                    f"I'm either missing the permission to connect or to speak in this channel: {interaction.user.voice.channel}")
+                return
+
             await interaction.followup.send(
                 f"Joining {interaction.user} in {interaction.user.voice.channel}")
             await vchannel.connect()
@@ -576,7 +600,8 @@ class Music(commands.Cog, name='Music',
                     vc.stop()
                     if server.id in self.streamers:
                         await interaction.followup.send("I'll be back when needed with /play requests")
-                        await vc.disconnect()
+                        await vc.disconnect(force=False)
+                        vc.cleanup()
                         await self.streamers[server.id].cleanup()
                 return
             else:
@@ -659,8 +684,7 @@ class Music(commands.Cog, name='Music',
             await interaction.followup.send("Queue is empty already")
             return
         if number <= 0:
-            for _ in range(len(streamer.queue._queue)):
-                del streamer.queue._queue[0]
+            streamer.queue._queue.clear()
             await interaction.followup.send("The queue has been emptied")
             return
         number = number - 1
@@ -711,7 +735,8 @@ class Music(commands.Cog, name='Music',
             return
         vchannel = interaction.guild.voice_client
         await interaction.followup.send("Kbye")
-        await vchannel.disconnect()
+        await vchannel.disconnect(force=False)
+        vchannel.cleanup()
         server = interaction.guild
         if server.id in self.streamers:
             await self.streamers[server.id].cleanup()
@@ -725,7 +750,7 @@ class Music(commands.Cog, name='Music',
         await interaction.response.defer(thinking=True)
         if interaction.guild.voice_client:
             if interaction.guild.voice_client.is_playing():
-                await interaction.followup.send("Music Paused")
+                await interaction.followup.send("Track Paused")
                 interaction.guild.voice_client.pause()
             else:
                 await interaction.followup.send("Already paused")
@@ -741,9 +766,9 @@ class Music(commands.Cog, name='Music',
         """
         await interaction.response.defer(thinking=True)
         if interaction.guild.voice_client:
-            if not interaction.guild.voice_client.is_playing():
+            if not interaction.guild.voice_client.is_playing() and interaction.guild.voice_client.is_paused():
                 await interaction.followup.send(
-                    "Track Resumed (May not play anything if there's nothing paused)")
+                    "Track Resumed")
                 interaction.guild.voice_client.resume()
             else:
                 await interaction.followup.send("Already playing")

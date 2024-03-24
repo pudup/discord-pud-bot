@@ -87,15 +87,10 @@ class Events(commands.Cog):
         if isinstance(error, commands.CommandNotFound):
             await ctx.send(f"All my commands are now slash commands.\nTry ```/help```")
         else:
-            if "unable to rename file: [Errno 2]" not in str(error):
-                await ctx.send("I've encountered an error. Please try again.")
-                jaby = await self.client.fetch_user(DEV_ID)
-                command = ctx.invoked_with
-                await jaby.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
-            else:
-                jaby = await self.client.fetch_user(DEV_ID)
-                command = ctx.invoked_with
-                await jaby.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
+            await ctx.send("I've encountered an error. Please try again.")
+            jaby = await self.client.fetch_user(DEV_ID)
+            command = ctx.invoked_with
+            await jaby.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):

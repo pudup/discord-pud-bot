@@ -4,7 +4,6 @@ import requests.exceptions
 from discord import app_commands
 from discord.ext import commands
 import aiohttp
-from utils.utils import color
 
 PREFIX = os.getenv('PREFIX')
 
@@ -45,25 +44,25 @@ async def pokemom_name(name):
         async with session.get(f"https://pokeapi.co/api/v2/pokemon/{name}") as response:
             try:
                 json = await response.json()
-            except requests.exceptions.JSONDecodeError:
+            except (requests.exceptions.JSONDecodeError, Exception):
                 return False
             pokename = json['forms'][0]['name'].title()
             image_url = json['sprites']['front_default']
             try:
                 first_appear = json['game_indices'][0]['version']['name']
-            except KeyError:
+            except (KeyError, IndexError):
                 first_appear = "Gen 6+ I think"  # The API didn't work at time of writing this for Gen6 and higher
             try:
                 base_ability = json['abilities'][0]['ability']['name']
-            except KeyError:
+            except (KeyError, IndexError):
                 base_ability = "unknown"
             try:
                 hidden_ability = json['abilities'][1]['ability']['name']
-            except KeyError:
+            except (KeyError, IndexError):
                 hidden_ability = "None"
             try:
                 pkm_type = [pkm_type['type']['name'] for pkm_type in json['types']]
-            except KeyError:
+            except (KeyError, IndexError):
                 pkm_type = "unknown"
             colour = colours[pkm_type[0]]
             try:
@@ -73,7 +72,7 @@ async def pokemom_name(name):
                          "def": json['stats'][3]['base_stat'],
                          "spdef": json['stats'][4]['base_stat'],
                          "speed": json['stats'][5]['base_stat'], }
-            except KeyError:
+            except (KeyError, IndexError):
                 stats = {"hp": "unknown",
                          "atk": "unknown",
                          "spatk": "unknown",
@@ -106,8 +105,8 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
         except ValueError:
             await interaction.followup.send(f"{interaction.user}\nInvalid index")
             return
-        if not 1 <= arg <= 1010:
-            await interaction.followup.send(f"{interaction.user}\nThe Pokédex ranges from 1 to 1010")
+        if not 1 <= arg <= 1025:
+            await interaction.followup.send(f"{interaction.user}\nThe Pokédex ranges from 1 to 1025")
             return
 
         # If valid input from user
