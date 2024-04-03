@@ -1,5 +1,6 @@
 from random import randint
 
+
 async def color():
     """Returns a random colour in hex format. Mainly for use with discord embeds"""
     random_number = randint(0, 16777215)

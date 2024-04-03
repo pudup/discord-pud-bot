@@ -17,7 +17,7 @@ async def test_pokemon_num():
 async def test_pokemon_name():
     random_pokemon = random.randint(1, 150)
     try:
-        response = await Pokemon.pokemom_name(str(random_pokemon))
+        response = await Pokemon.pokemon_name(str(random_pokemon))
         assert int(response[7]) == random_pokemon
         assert response[1][0:5] == "https"
         assert response[5]["hp"] != "unknown"

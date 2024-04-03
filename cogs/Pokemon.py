@@ -18,7 +18,7 @@ async def pokemon_num(index):
             return [pokename, f"https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/{index}.png"]
 
 
-async def pokemom_name(name):
+async def pokemon_name(name):
     """Returns an array containing a lot of information about a Pokémon based on input name"""
     async with aiohttp.ClientSession() as session:
         colours = {
@@ -131,7 +131,7 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Checking if user input is valid|
-        out_list = await pokemom_name(name.lower())
+        out_list = await pokemon_name(name.lower())
         if not out_list:
             await interaction.followup.send(
                 "I couldn't find what you're looking for. Try a number from 1-898 if you don't know a name")

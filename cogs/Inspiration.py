@@ -36,7 +36,7 @@ class Inspiration(commands.Cog, name='Inspiration', description="quote, pickup")
 
     @app_commands.command(name='quote',
                           description='Get a random inspirational quote from some, possibly famous, person.')
-    async def quotey(self, interaction: discord.Interaction) -> None:
+    async def inspirational_quote(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random inspirational quote and its author"""
         await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.
@@ -52,7 +52,7 @@ class Inspiration(commands.Cog, name='Inspiration', description="quote, pickup")
         await interaction.followup.send(embed=embed)
 
     @app_commands.command(name='pickup', description='Get a 100% success rate pickup line')
-    async def pickuper(self, interaction: discord.Interaction) -> None:
+    async def pick_up(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random pickup line"""
         await interaction.response.defer(thinking=True)
         # This response is here to avoid the discord slash command 3 second timeout.

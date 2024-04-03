@@ -88,19 +88,23 @@ class Events(commands.Cog):
             await ctx.send(f"All my commands are now slash commands.\nTry ```/help```")
         else:
             await ctx.send("I've encountered an error. Please try again.")
-            jaby = await self.client.fetch_user(DEV_ID)
+            dev_account = await self.client.fetch_user(DEV_ID)
             command = ctx.invoked_with
-            await jaby.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
+            await dev_account.send("Got an error somewhere using the command: " + str(command) + " >>>> " + str(error))
 
     @commands.Cog.listener()
     async def on_guild_join(self, guild):
         """The bot sends a message to the first text channel when it joins a server"""
         try:
-            joinchannel = guild.system_channel
-            await joinchannel.send(f'Thanks for inviting me to your server! Use /help to find out how I work')
-        except:
-            await guild.text_channels[0].send(
-                f'Thanks for inviting me to your server! Use /help to find out how I work')
+            system_channel = guild.system_channel
+            await system_channel.send('Thanks for inviting me to your server! Use /help to find out how I work')
+        except (AttributeError, discord.Forbidden):
+            for channel in guild.text_channels:
+                try:
+                    await channel.send('Thanks for inviting me to your server! Use /help to find out how I work')
+                    return
+                except (AttributeError, discord.Forbidden):
+                    continue
 
     @commands.Cog.listener()
     async def on_message(self, message):

@@ -94,6 +94,11 @@ async def is_link(query):
 
 
 async def is_live(url):
+    """
+    Checks to see if the given YouTube link is to a livestream or not
+    Returns True when Live else False
+    Also returns False on invalid links
+    """
     live = False
     if not await is_youtube(url):
         return live
@@ -164,6 +169,12 @@ ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
+    """
+    The audio source object for the player
+    Requires a direct link
+    Works for YouTube and Soundcloud (and possibly others)
+    """
+
     def __init__(self, source, *, data, volume=0.5):
         super().__init__(source, volume)
 
@@ -389,17 +400,18 @@ class Music(commands.Cog, name='Music',
             await interaction.followup.send(f"Connect to a voice channel first")
             return
         else:
-            vchannel = interaction.user.voice.channel
+            voice_channel = interaction.user.voice.channel
 
-        if interaction.guild.me in vchannel.members:
+        if interaction.guild.me in voice_channel.members:
             await interaction.followup.send(
                 f"I'm already connected to your channel {interaction.user}. Use ```/stop``` if you want me to leave")
             return
         else:
-            permissions = vchannel.permissions_for(interaction.guild.me)
+            permissions = voice_channel.permissions_for(interaction.guild.me)
             if not permissions.connect or not permissions.speak:
                 await interaction.followup.send(
-                    f"I'm either missing the permission to connect or to speak in this channel: {interaction.user.voice.channel}")
+                    f"I'm either missing the permission to connect or to speak in this channel: "
+                    f"{interaction.user.voice.channel}")
                 return
 
             await interaction.followup.send(
@@ -409,13 +421,14 @@ class Music(commands.Cog, name='Music',
                 to_be_resumed = True
             else:
                 to_be_resumed = False
-            await voice_client.move_to(vchannel)
+            await voice_client.move_to(voice_channel)
             if to_be_resumed:
                 await asyncio.sleep(1)  # To avoid a race condition
                 voice_client.resume()
 
     @app_commands.command(name='playsingle',
-                          description='Play a track without using the queue (BUGGY AND UNMAINTAINED. USE /PLAY INSTEAD)')
+                          description='Play a track without using the queue (BUGGY AND UNMAINTAINED. '
+                                      'USE /PLAY INSTEAD)')
     @app_commands.guild_only()
     @app_commands.describe(track="Song name or link (youtube/soundcloud) (BUGGY AND UNMAINTAINED. USE /PLAY INSTEAD)")
     async def playsingle(self, interaction: discord.Interaction, track: str) -> None:
@@ -431,17 +444,17 @@ class Music(commands.Cog, name='Music',
             await interaction.followup.send("Connect to a voice channel first")
             return
         else:
-            vchannel = interaction.user.voice.channel
+            voice_channel = interaction.user.voice.channel
 
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
 
         if voice is None:
             await interaction.followup.send(
                 f"Joining {interaction.user} in {interaction.user.voice.channel}")
-            await vchannel.connect()
+            await voice_channel.connect()
         else:
-            if interaction.client.user not in vchannel.members:
-                await interaction.followup.send(f"I'm already playing in {vchannel}. Use /move first")
+            if interaction.client.user not in voice_channel.members:
+                await interaction.followup.send(f"I'm already playing in {voice_channel}. Use /move first")
                 return
 
         server = interaction.guild
@@ -455,7 +468,7 @@ class Music(commands.Cog, name='Music',
 
         vc.stop()
         streamer = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
-        vc.play(streamer, after=lambda _: 0)  # self.playnext(ctx))
+        vc.play(streamer, after=lambda _: 0)
 
         embed = discord.Embed(title=f"{streamer.title}", url=f"{streamer.web_url}",
                               description=f"Playing in {interaction.user.voice.channel}",
@@ -470,10 +483,10 @@ class Music(commands.Cog, name='Music',
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
         if voice is None:
             return
-        vchannel = interaction.guild.voice_client
+        voice_channel = interaction.guild.voice_client
         if not interaction.guild.voice_client.is_playing():
-            await vchannel.disconnect(force=False)
-            vchannel.cleanup()
+            await voice_channel.disconnect(force=False)
+            voice_channel.cleanup()
             server = interaction.guild
             if server.id in self.streamers:
                 await self.streamers[server.id].cleanup()
@@ -495,23 +508,24 @@ class Music(commands.Cog, name='Music',
             await interaction.followup.send("Connect to a voice channel first")
             return
         else:
-            vchannel = interaction.user.voice.channel
+            voice_channel = interaction.user.voice.channel
 
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
 
         if voice is None:
-            permissions = vchannel.permissions_for(interaction.guild.me)
+            permissions = voice_channel.permissions_for(interaction.guild.me)
             if not permissions.connect or not permissions.speak:
                 await interaction.followup.send(
-                    f"I'm either missing the permission to connect or to speak in this channel: {interaction.user.voice.channel}")
+                    f"I'm either missing the permission to connect or to speak in this channel: "
+                    f"{interaction.user.voice.channel}")
                 return
 
             await interaction.followup.send(
                 f"Joining {interaction.user} in {interaction.user.voice.channel}")
-            await vchannel.connect()
+            await voice_channel.connect()
         else:
-            if interaction.client.user not in vchannel.members:
-                await interaction.followup.send(f"I'm already playing in {vchannel}. Use /move first")
+            if interaction.client.user not in voice_channel.members:
+                await interaction.followup.send(f"I'm already playing in {voice_channel}. Use /move first")
                 return
 
         streamer = await self.get_streamer(interaction)
@@ -522,7 +536,7 @@ class Music(commands.Cog, name='Music',
             await interaction.followup.send("Setting up queue, I'll get to that in a moment")
             await streamer.queue_setup.wait()
 
-        if not streamer.queue._queue:
+        if not streamer.queue.__dict__['_queue']:
             send_embed = False
             await asyncio.sleep(1)
             streamer.queue_setup.clear()
@@ -593,7 +607,7 @@ class Music(commands.Cog, name='Music',
 
         streamer = await self.get_streamer(interaction)
         vc = server.voice_client
-        if not streamer.queue._queue:
+        if not streamer.queue.__dict__['_queue']:
             await interaction.followup.send("Reached end of queue")
             if not streamer.currently_downloading:
                 if vc.is_playing():
@@ -618,7 +632,7 @@ class Music(commands.Cog, name='Music',
     @app_commands.command(name='skipto', description="Skip to a specific song in the playlist")
     @app_commands.guild_only()
     @app_commands.describe(number="Queue number (use /queue)")
-    async def skipto(self, interaction: discord.Interaction, number: str) -> None:
+    async def skip_to(self, interaction: discord.Interaction, number: str) -> None:
         """
         Skips to a specific track in the playlist
         """
@@ -631,7 +645,7 @@ class Music(commands.Cog, name='Music',
 
         streamer = await self.get_streamer(interaction)
         server = interaction.guild
-        if not streamer.queue._queue:
+        if not streamer.queue.__dict__['_queue']:
             await interaction.followup.send("There's nothing in the queue")
             return
 
@@ -640,15 +654,15 @@ class Music(commands.Cog, name='Music',
         except ValueError:
             await interaction.followup.send("Invalid Entry")
             return
-        if not 0 < number <= len(streamer.queue._queue):
+        if not 0 < number <= len(streamer.queue.__dict__['_queue']):
             await interaction.followup.send("There's nothing at that index. Check again with /queue")
             return
         try:
             for _ in range(number - 1):
-                del streamer.queue._queue[0]
+                del streamer.queue.__dict__['_queue'][0]
 
             embed_queue = discord.Embed(title='Skipping to', color=await color())
-            embed_queue.add_field(name=f'Track {number}', value=streamer.queue._queue[0].title, inline=False)
+            embed_queue.add_field(name=f'Track {number}', value=streamer.queue.__dict__['_queue'][0].title, inline=False)
             await interaction.followup.send(embed=embed_queue)
             vc = server.voice_client
 
@@ -680,20 +694,20 @@ class Music(commands.Cog, name='Music',
             return
 
         streamer = await self.get_streamer(interaction)
-        if not streamer.queue._queue:
+        if not streamer.queue.__dict__['_queue']:
             await interaction.followup.send("Queue is empty already")
             return
         if number <= 0:
-            streamer.queue._queue.clear()
+            streamer.queue.__dict__['_queue'].clear()
             await interaction.followup.send("The queue has been emptied")
             return
         number = number - 1
 
         try:
-            del streamer.queue._queue[number]
+            del streamer.queue.__dict__['_queue'][number]
             embed_queue = discord.Embed(title='Current queue', color=await color())
 
-            for num, song in enumerate(streamer.queue._queue):
+            for num, song in enumerate(streamer.queue.__dict__['_queue']):
                 embed_queue.add_field(name=f'Track {num + 1}', value=song.title, inline=False)
             await interaction.followup.send(embed=embed_queue)
             return
@@ -714,9 +728,9 @@ class Music(commands.Cog, name='Music',
                 "I'm not currently playing anything.\nUse ```/play```")
             return
         streamer = await self.get_streamer(interaction)
-        if streamer.queue._queue:
+        if streamer.queue.__dict__['_queue']:
             embed_queue = discord.Embed(title='Current queue', color=await color())
-            for num, song in enumerate(streamer.queue._queue):
+            for num, song in enumerate(streamer.queue.__dict__['_queue']):
                 embed_queue.add_field(name=f'Track {num + 1}', value=song.title, inline=False)
             await interaction.followup.send(embed=embed_queue)
         else:
@@ -733,10 +747,10 @@ class Music(commands.Cog, name='Music',
         if voice is None:
             await interaction.followup.send("But I no start :<")
             return
-        vchannel = interaction.guild.voice_client
+        voice_channel = interaction.guild.voice_client
         await interaction.followup.send("Kbye")
-        await vchannel.disconnect(force=False)
-        vchannel.cleanup()
+        await voice_channel.disconnect(force=False)
+        voice_channel.cleanup()
         server = interaction.guild
         if server.id in self.streamers:
             await self.streamers[server.id].cleanup()

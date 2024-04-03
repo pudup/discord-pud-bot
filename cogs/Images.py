@@ -7,7 +7,7 @@ from utils.utils import color
 
 
 async def get_kittens():
-    """Returns the URL to a random kitten image from randomkittengenerator.com as a string"""
+    """Returns the URL to a random kitten image from randomkittengenerator.com; as a string"""
     async with aiohttp.ClientSession() as session:
         async with session.get("https://www.randomkittengenerator.com/") as response:
             text = await response.read()
