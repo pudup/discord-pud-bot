@@ -110,8 +110,9 @@ class Events(commands.Cog):
     async def on_message(self, message):
         """Reads all messages that it can and does things based on what it reads. If you're gon use this, keep it
         polite and privacy-friendly"""
-        if message.author == self.client.user:  # This is required. Without this the bot will respond to its own messages
+        if message.author == self.client.user:
             return
+            # This is required. Without this the bot will respond to its own messages
 
         if "yay" in message.content.lower():
             await message.channel.send(

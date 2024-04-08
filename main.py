@@ -8,7 +8,7 @@ TOKEN = os.getenv("TOKEN")
 PREFIX = os.getenv("PREFIX")
 
 client = commands.Bot(command_prefix=PREFIX, intents=discord.Intents.all())
-client.help_command = PrettyHelp(color=0x45c6ee, no_category='Help', dm_help=True)
+client.help_command = PrettyHelp(color=discord.Color.from_rgb(69, 198, 238), no_category='Help', dm_help=True)
 
 
 async def load_extensions():
