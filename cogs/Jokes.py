@@ -5,8 +5,6 @@ import aiohttp
 from utils.utils import color
 import os
 
-GPT_KEY = os.getenv("GPT_KEY")  # Shower Thoughts (rapidapi)
-
 
 async def dad_jokes():
     """Returns a random dad joke from the icanhazdadjoke API as a string"""

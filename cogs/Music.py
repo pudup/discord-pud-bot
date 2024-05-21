@@ -404,18 +404,18 @@ class Music(commands.Cog, name='Music',
 
         if interaction.guild.me in voice_channel.members:
             await interaction.followup.send(
-                f"I'm already connected to your channel {interaction.user}. Use ```/stop``` if you want me to leave")
+                f"I'm already connected to your channel {discord.utils.escape_markdown(str(interaction.user))}. Use ```/stop``` if you want me to leave")
             return
         else:
             permissions = voice_channel.permissions_for(interaction.guild.me)
             if not permissions.connect or not permissions.speak:
                 await interaction.followup.send(
                     f"I'm either missing the permission to connect or to speak in this channel: "
-                    f"{interaction.user.voice.channel}")
+                    f"{discord.utils.escape_markdown(str(interaction.user.voice.channel))}")
                 return
 
             await interaction.followup.send(
-                f"Moving to {interaction.user.voice.channel} with {interaction.user}")
+                f"Moving to {discord.utils.escape_markdown(str(interaction.user.voice.channel))} with {discord.utils.escape_markdown(str(interaction.user))}")
             voice_client = interaction.guild.voice_client
             if voice_client.is_playing():
                 to_be_resumed = True
@@ -450,7 +450,8 @@ class Music(commands.Cog, name='Music',
 
         if voice is None:
             await interaction.followup.send(
-                f"Joining {interaction.user} in {interaction.user.voice.channel}")
+                f"Joining {discord.utils.escape_markdown(str(interaction.user))} in "
+                f"{discord.utils.escape_markdown(str(interaction.user.voice.channel))}")
             await voice_channel.connect()
         else:
             if interaction.client.user not in voice_channel.members:
@@ -461,17 +462,19 @@ class Music(commands.Cog, name='Music',
         vc = server.voice_client
 
         if not await is_link(track):
-            getting_message = await interaction.followup.send(f"Tryna find {track} for {interaction.user}...")
+            getting_message = await interaction.followup.send(
+                f"Tryna find {track} for {discord.utils.escape_markdown(str(interaction.user))}...")
             track = await search_youtube(track)
         else:
-            getting_message = await interaction.followup.send(f"Getting this link <{track}> for {interaction.user}...")
+            getting_message = await interaction.followup.send(
+                f"Getting this link <{track}> for {discord.utils.escape_markdown(str(interaction.user))}...")
 
         vc.stop()
         streamer = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
         vc.play(streamer, after=lambda _: 0)
 
         embed = discord.Embed(title=f"{streamer.title}", url=f"{streamer.web_url}",
-                              description=f"Playing in {interaction.user.voice.channel}",
+                              description=f"Playing in {discord.utils.escape_markdown(str(interaction.user.voice.channel))}",
                               color=await color())
         embed.set_author(name=f"Now Playing for {interaction.user}",
                          icon_url=interaction.user.display_avatar)
@@ -517,11 +520,12 @@ class Music(commands.Cog, name='Music',
             if not permissions.connect or not permissions.speak:
                 await interaction.followup.send(
                     f"I'm either missing the permission to connect or to speak in this channel: "
-                    f"{interaction.user.voice.channel}")
+                    f"{discord.utils.escape_markdown(str(interaction.user.voice.channel))}")
                 return
 
             await interaction.followup.send(
-                f"Joining {interaction.user} in {interaction.user.voice.channel}")
+                f"Joining {discord.utils.escape_markdown(str(interaction.user))} in "
+                f"{discord.utils.escape_markdown(str(interaction.user.voice.channel))}")
             await voice_channel.connect()
         else:
             if interaction.client.user not in voice_channel.members:
@@ -547,7 +551,8 @@ class Music(commands.Cog, name='Music',
             send_embed = True
 
         if not await is_link(track):
-            await interaction.followup.send(f"Tryna find {track} for {interaction.user}...")
+            await interaction.followup.send(
+                f"Tryna find {track} for {discord.utils.escape_markdown(str(interaction.user))}...")
             track = await search_youtube(track)
             track_id = track + str(random.randint(0, 1000000))
             streamer.currently_downloading.append(track_id)
@@ -556,7 +561,8 @@ class Music(commands.Cog, name='Music',
         else:
             track = await link_unshortener(track)
             if not await is_live(track):
-                await interaction.followup.send(f"Getting this link <{track}> for {interaction.user}...")
+                await interaction.followup.send(
+                    f"Getting this link <{track}> for {discord.utils.escape_markdown(str(interaction.user))}...")
                 track_id = track + str(random.randint(0, int(1e7)))
                 streamer.currently_downloading.append(track_id)
                 source = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
@@ -662,7 +668,8 @@ class Music(commands.Cog, name='Music',
                 del streamer.queue.__dict__['_queue'][0]
 
             embed_queue = discord.Embed(title='Skipping to', color=await color())
-            embed_queue.add_field(name=f'Track {number}', value=streamer.queue.__dict__['_queue'][0].title, inline=False)
+            embed_queue.add_field(name=f'Track {number}', value=streamer.queue.__dict__['_queue'][0].title,
+                                  inline=False)
             await interaction.followup.send(embed=embed_queue)
             vc = server.voice_client
 
@@ -803,7 +810,8 @@ class Music(commands.Cog, name='Music',
 
         # Building the embed
         embed = discord.Embed(title=f"{song_title} by {song_artist}", color=await color())
-        embed.set_author(name=f"Lyrics for {interaction.user}", icon_url=interaction.user.display_avatar)
+        embed.set_author(name=f"Lyrics for {interaction.user}",
+                         icon_url=interaction.user.display_avatar)
         embed.description = song_lyrics
 
         # Sending the embed

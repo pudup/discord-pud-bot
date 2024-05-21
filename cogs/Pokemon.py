@@ -103,10 +103,10 @@ class Pokemon(commands.Cog, name='Pokémon', description='pokemon, pokedex'):
         try:
             arg = int(index)
         except ValueError:
-            await interaction.followup.send(f"{interaction.user}\nInvalid index")
+            await interaction.followup.send(f"Invalid index")
             return
         if not 1 <= arg <= 1025:
-            await interaction.followup.send(f"{interaction.user}\nThe Pokédex ranges from 1 to 1025")
+            await interaction.followup.send(f"The Pokédex ranges from 1 to 1025")
             return
 
         # If valid input from user

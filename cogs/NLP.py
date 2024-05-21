@@ -82,12 +82,11 @@ class NLP(commands.Cog, name='NLP', description="chatgpt, chat, summer"):
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Setting up the ChatGPT API
-        url = "https://openai80.p.rapidapi.com/chat/completions"
+        url = "https://chat-gpt26.p.rapidapi.com/"
         headers = {
-            "Accept-Encoding": "gzip, deflate",
-            "content-type": "application/json",
+            "Content-Type": "application/json",
             "X-RapidAPI-Key": GPT_KEY,
-            "X-RapidAPI-Host": "openai80.p.rapidapi.com"
+            "X-RapidAPI-Host": "chat-gpt26.p.rapidapi.com"
         }
         payload = {
             "model": "gpt-3.5-turbo",
