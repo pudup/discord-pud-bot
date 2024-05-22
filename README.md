@@ -1,4 +1,4 @@
-# Discord Bot
+# Discord Bot 2100557190 BCA PROJECT
 
 #### 🎉 Now supports only Slash Commands 🎉
 
