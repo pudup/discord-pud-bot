@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 import aiosqlite
-import asyncio
+
 
 class LevelingCog(commands.Cog):
     def __init__(self, bot):
@@ -38,12 +38,14 @@ class LevelingCog(commands.Cog):
 
     async def check_level_up(self, user_id, guild_id):
         async with aiosqlite.connect('leveling.db') as db:
-            async with db.execute('SELECT xp, level FROM user_levels WHERE user_id = ? AND guild_id = ?', (user_id, guild_id)) as cursor:
+            async with db.execute('SELECT xp, level FROM user_levels WHERE user_id = ? AND guild_id = ?',
+                                  (user_id, guild_id)) as cursor:
                 row = await cursor.fetchone()
                 if row:
                     xp, level = row
                     if xp >= (level * 100):  # You can adjust the XP requirement for leveling up
-                        await db.execute('UPDATE user_levels SET level = ?, xp = ? WHERE user_id = ? AND guild_id = ?', (level + 1, 0, user_id, guild_id))
+                        await db.execute('UPDATE user_levels SET level = ?, xp = ? WHERE user_id = ? AND guild_id = ?',
+                                         (level + 1, 0, user_id, guild_id))
                         await db.commit()
                         return True
         return False
@@ -54,14 +56,17 @@ class LevelingCog(commands.Cog):
 
         # Check if the user has a profile, if not, add them to the database with level 1
         async with aiosqlite.connect('leveling.db') as db:
-            async with db.execute('SELECT user_id FROM user_levels WHERE user_id = ? AND guild_id = ?', (user_id, guild_id)) as cursor:
+            async with db.execute('SELECT user_id FROM user_levels WHERE user_id = ? AND guild_id = ?',
+                                  (user_id, guild_id)) as cursor:
                 row = await cursor.fetchone()
                 if not row:
                     await db.execute('INSERT INTO user_levels (user_id, guild_id) VALUES (?, ?)', (user_id, guild_id))
                     await db.commit()
-                    await message.channel.send(f"Welcome {message.author.mention} to the leveling system! You've been added at level 1.")
+                    await message.channel.send(
+                        f"Welcome {message.author.mention} to the leveling system! You've been added at level 1.")
 
-        if user_id not in self.cooldowns or (user_id in self.cooldowns and (message.created_at - self.cooldowns[user_id]).total_seconds() > 60):  # 60 seconds cooldown
+        if user_id not in self.cooldowns or (user_id in self.cooldowns and (
+                message.created_at - self.cooldowns[user_id]).total_seconds() > 60):  # 60 seconds cooldown
             await self.add_experience(user_id, guild_id, 10)  # Adjust XP gain as needed
             self.cooldowns[user_id] = message.created_at
             print(self.cooldowns)
@@ -80,13 +85,16 @@ class LevelingCog(commands.Cog):
         user_id = interaction.author.id
         guild_id = interaction.guild.id
         async with aiosqlite.connect('leveling.db') as db:
-            async with db.execute('SELECT level, xp FROM user_levels WHERE user_id = ? AND guild_id = ?', (user_id, guild_id)) as cursor:
+            async with db.execute('SELECT level, xp FROM user_levels WHERE user_id = ? AND guild_id = ?',
+                                  (user_id, guild_id)) as cursor:
                 row = await cursor.fetchone()
                 if row:
                     level, xp = row
                     await interaction.response.send_message(content=f'**Level:** {level}\n**XP:** {xp}', ephemeral=True)
                 else:
-                    await interaction.response.send_message(content="You haven't gained any experience yet!", ephemeral=True)
+                    await interaction.response.send_message(content="You haven't gained any experience yet!",
+                                                            ephemeral=True)
+
 
 async def setup(bot):
     await bot.add_cog(LevelingCog(bot))

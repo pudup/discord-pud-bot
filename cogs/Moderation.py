@@ -3,6 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 import aiosqlite
 
+
 class Moderation(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -104,7 +105,9 @@ class Moderation(commands.Cog):
         profanity_words = [row[0] for row in rows]
         if any(word in message.content.lower() for word in profanity_words):
             await message.delete()
-            await message.channel.send(f'{message.author.mention}, your message contained inappropriate language and was removed.')
+            await message.channel.send(
+                f'{message.author.mention}, your message contained inappropriate language and was removed.')
+
 
 async def setup(bot):
     await bot.add_cog(Moderation(bot))
