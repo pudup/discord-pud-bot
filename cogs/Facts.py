@@ -3,6 +3,7 @@ from discord import app_commands
 from discord.ext import commands
 import aiohttp
 from utils.utils import color
+from cogs.Images import get_cat
 
 
 async def cat_facts():
@@ -15,14 +16,6 @@ async def cat_facts():
             else:
                 fact = "I couldn't think up any new facts for some reason :<"
             return fact
-
-
-async def kitten_thumb():
-    """Returns the URL to a random cat image from thecatapi API as a string"""
-    async with aiohttp.ClientSession() as session:
-        async with session.get("https://api.thecatapi.com/v1/images/search") as response:
-            text = await response.json()
-            return text[0]['url']
 
 
 class Facts(commands.Cog, name='Facts', description="catfact"):
@@ -40,7 +33,7 @@ class Facts(commands.Cog, name='Facts', description="catfact"):
         # Building the embed
         embed = discord.Embed(title=await cat_facts(), color=await color())
         embed.set_author(name=f"Cat fact for {interaction.user}", icon_url=interaction.user.display_avatar)
-        embed.set_thumbnail(url=await kitten_thumb())
+        embed.set_thumbnail(url=await get_cat())
 
         # Sending the embed
         await interaction.followup.send(embed=embed)

@@ -3,7 +3,6 @@ from discord import app_commands
 from discord.ext import commands
 import aiohttp
 from utils.utils import color
-import os
 
 
 async def dad_jokes():
@@ -25,7 +24,7 @@ async def shower():
     """
     Returns a random shower thought from the popcat API as a string. The API pulls it from r/showerthoughts.
     """
-
+    return "Think is currently disabled due to Reddit breaking its API. This command will likely be removed soon."
     async with aiohttp.ClientSession() as session:
         async with session.get("https://api.popcat.xyz/showerthoughts") as response:
             if response.status == 200:

@@ -3,8 +3,8 @@ from cogs import Images
 
 
 @pytest.mark.asyncio
-async def test_get_kittens():
-    response = await Images.get_kittens()
+async def test_get_cat():
+    response = await Images.get_cat()
     assert response[0:5] == "https"
 
 

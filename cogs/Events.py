@@ -49,8 +49,8 @@ class Events(commands.Cog):
         dev = await self.client.fetch_user(DEV_ID)
         embed = discord.Embed(color=await color())
         embed.set_author(name=f"PyTest results for {dev.name}", icon_url=dev.display_avatar)
-        with open("./tests/results.txt", "r") as results:
-            lines = results.read().splitlines()
+        async with aiofiles.open("./tests/results.txt", "r") as results:
+            lines = await results.readlines()
             success = True
             description = ""
             for line in lines:

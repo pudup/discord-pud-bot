@@ -3,7 +3,6 @@ import discord
 from discord import app_commands
 from discord.ext import commands
 import cohere
-import aiohttp
 from utils.utils import color
 
 # Put your LLM API keys here

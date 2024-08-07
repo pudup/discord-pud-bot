@@ -404,7 +404,8 @@ class Music(commands.Cog, name='Music',
 
         if interaction.guild.me in voice_channel.members:
             await interaction.followup.send(
-                f"I'm already connected to your channel {discord.utils.escape_markdown(str(interaction.user))}. Use ```/stop``` if you want me to leave")
+                f"I'm already connected to your channel {discord.utils.escape_markdown(str(interaction.user))}. Use "
+                f"```/stop``` if you want me to leave")
             return
         else:
             permissions = voice_channel.permissions_for(interaction.guild.me)
@@ -415,7 +416,8 @@ class Music(commands.Cog, name='Music',
                 return
 
             await interaction.followup.send(
-                f"Moving to {discord.utils.escape_markdown(str(interaction.user.voice.channel))} with {discord.utils.escape_markdown(str(interaction.user))}")
+                f"Moving to {discord.utils.escape_markdown(str(interaction.user.voice.channel))} with "
+                f"{discord.utils.escape_markdown(str(interaction.user))}")
             voice_client = interaction.guild.voice_client
             if voice_client.is_playing():
                 to_be_resumed = True
@@ -474,7 +476,8 @@ class Music(commands.Cog, name='Music',
         vc.play(streamer, after=lambda _: 0)
 
         embed = discord.Embed(title=f"{streamer.title}", url=f"{streamer.web_url}",
-                              description=f"Playing in {discord.utils.escape_markdown(str(interaction.user.voice.channel))}",
+                              description=f"Playing in "
+                                          f"{discord.utils.escape_markdown(str(interaction.user.voice.channel))}",
                               color=await color())
         embed.set_author(name=f"Now Playing for {interaction.user}",
                          icon_url=interaction.user.display_avatar)
@@ -547,7 +550,7 @@ class Music(commands.Cog, name='Music',
             live_check = True
         else:
             send_embed = True
-        if not send_embed and vc.is_playing():
+        if not send_embed and (vc.is_playing() or vc.is_paused()):
             send_embed = True
 
         if not await is_link(track):
@@ -616,7 +619,7 @@ class Music(commands.Cog, name='Music',
         if not streamer.queue.__dict__['_queue']:
             await interaction.followup.send("Reached end of queue")
             if not streamer.currently_downloading:
-                if vc.is_playing():
+                if vc.is_playing() or vc.is_paused():
                     vc.stop()
                     if server.id in self.streamers:
                         await interaction.followup.send("I'll be back when needed with /play requests")
@@ -626,11 +629,11 @@ class Music(commands.Cog, name='Music',
                 return
             else:
                 await interaction.followup.send("But there is another track being downloaded...")
-                if vc.is_playing():
+                if vc.is_playing() or vc.is_paused():
                     vc.stop()
                     return
 
-        if vc.is_playing():
+        if vc.is_playing() or vc.is_paused():
             await interaction.followup.send("Skipping to next song")
             vc.stop()
             return
@@ -673,7 +676,7 @@ class Music(commands.Cog, name='Music',
             await interaction.followup.send(embed=embed_queue)
             vc = server.voice_client
 
-            if vc.is_playing():
+            if vc.is_playing() or vc.is_paused():
                 vc.stop()
                 return
 
@@ -741,7 +744,10 @@ class Music(commands.Cog, name='Music',
                 embed_queue.add_field(name=f'Track {num + 1}', value=song.title, inline=False)
             await interaction.followup.send(embed=embed_queue)
         else:
-            await interaction.followup.send("Your queue is empty")
+            if streamer.currently_downloading:
+                await interaction.followup.send("Queue is empty but something is currently being added to it")
+            else:
+                await interaction.followup.send("Your queue is empty")
 
     @app_commands.command(name='stop', description='Stops playback, clears playlist and leaves the voice channel')
     @app_commands.guild_only()
