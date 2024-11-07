@@ -15,6 +15,9 @@ from utils.utils import color
 import azapi
 
 
+YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
+
+
 # TODO: Add docstrings and comments to this cog
 # This COG currently has no comments or docstrings and might be difficult to read through. Will be added later
 
@@ -36,7 +39,7 @@ async def search_youtube(query):
     final_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
     async with aiohttp.ClientSession() as session:
         # Pass the aiohttp client session
-        youtube_search = YoutubeDataApiV3Client(session, dev_key=os.getenv("YOU_KEY"))
+        youtube_search = YoutubeDataApiV3Client(session, dev_key=YOUTUBE_API_KEY)
         # Search
         results = await youtube_search.search(q=query,
                                               search_type="video",
@@ -50,7 +53,7 @@ async def search_youtube(query):
         return final_url
 
 
-async def link_unshortener(url):
+async def link_unshortener(url) -> str:
     """
     Finds final link in redirect chain
     """
@@ -104,7 +107,7 @@ async def is_live(url):
         return live
     url = await clean_youtube_link(url)
     async with aiohttp.ClientSession() as session:
-        youtube_search = YoutubeDataApiV3Client(session, dev_key=os.getenv("YOU_KEY"))
+        youtube_search = YoutubeDataApiV3Client(session, dev_key=YOUTUBE_API_KEY)
         results = await youtube_search.search(q=url,
                                               search_type="video",
                                               max_results=30)
@@ -428,29 +431,38 @@ class Music(commands.Cog, name='Music',
                 await asyncio.sleep(1)  # To avoid a race condition
                 voice_client.resume()
 
-    @app_commands.command(name='playsingle',
-                          description='Play a track without using the queue (BUGGY AND UNMAINTAINED. '
-                                      'USE /PLAY INSTEAD)')
-    @app_commands.guild_only()
-    @app_commands.describe(track="Song name or link (youtube/soundcloud) (BUGGY AND UNMAINTAINED. USE /PLAY INSTEAD)")
-    async def playsingle(self, interaction: discord.Interaction, track: str) -> None:
+    # @app_commands.command(name='play_list',
+    #                       description='Add a Youtube Playlist to the Queue')
+    # @app_commands.guild_only()
+    # @app_commands.describe(track="Only works for Youtube Playlist Links. Use /play for anything else")
+    async def play_list(self, interaction: discord.Interaction, track: str) -> None:
         """
         A command to play a single link or query without using the playlist queue
         This command destroys the current queue/loop object
         """
         await interaction.response.defer(thinking=True)
-        server = interaction.guild
-        if server.id in self.streamers:
-            await self.streamers[server.id].cleanup()
+        if not await is_link(track):
+            await interaction.followup.send("That's not a valid link")
+            return
+        track = await link_unshortener(track)
+        if "playlist" not in track and "list=" not in track:
+            await interaction.followup.send("That's not a Youtube playlist")
+            return
         if interaction.user.voice is None:
             await interaction.followup.send("Connect to a voice channel first")
             return
         else:
             voice_channel = interaction.user.voice.channel
-
         voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
 
         if voice is None:
+            permissions = voice_channel.permissions_for(interaction.guild.me)
+            if not permissions.connect or not permissions.speak:
+                await interaction.followup.send(
+                    f"I'm either missing the permission to connect or to speak in this channel: "
+                    f"{discord.utils.escape_markdown(str(interaction.user.voice.channel))}")
+                return
+
             await interaction.followup.send(
                 f"Joining {discord.utils.escape_markdown(str(interaction.user))} in "
                 f"{discord.utils.escape_markdown(str(interaction.user.voice.channel))}")
@@ -460,44 +472,20 @@ class Music(commands.Cog, name='Music',
                 await interaction.followup.send(f"I'm already playing in {voice_channel}. Use /move first")
                 return
 
+        streamer = await self.get_streamer(interaction)
         server = interaction.guild
         vc = server.voice_client
 
-        if not await is_link(track):
-            getting_message = await interaction.followup.send(
-                f"Tryna find {track} for {discord.utils.escape_markdown(str(interaction.user))}...")
-            track = await search_youtube(track)
-        else:
-            getting_message = await interaction.followup.send(
-                f"Getting this link <{track}> for {discord.utils.escape_markdown(str(interaction.user))}...")
+        if not streamer.queue_setup.is_set():
+            await interaction.followup.send("Setting up queue, I'll get to that in a moment")
+            await streamer.queue_setup.wait()
 
-        vc.stop()
-        streamer = await YTDLSource.from_url(url=track, loop=self.client.loop, server_id=interaction.guild.id)
-        vc.play(streamer, after=lambda _: 0)
+        if not streamer.queue.__dict__['_queue']:
+            send_addedToPlaylist_embed = False
+            await asyncio.sleep(1)
+            streamer.queue_setup.clear()
+            first_entry_check = True
 
-        embed = discord.Embed(title=f"{streamer.title}", url=f"{streamer.web_url}",
-                              description=f"Playing in "
-                                          f"{discord.utils.escape_markdown(str(interaction.user.voice.channel))}",
-                              color=await color())
-        embed.set_author(name=f"Now Playing for {interaction.user}",
-                         icon_url=interaction.user.display_avatar)
-        embed.set_thumbnail(url=f"https://i.ytimg.com/vi_webp/{streamer.id}/maxresdefault.webp")
-        embed.add_field(name='Duration', value=str(datetime.timedelta(seconds=streamer.duration)))
-        await interaction.followup.send(embed=embed)
-        await getting_message.delete()
-        await asyncio.sleep(int(streamer.duration))
-        voice = discord.utils.get(self.client.voice_clients, guild=interaction.guild)
-        if voice is None:
-            return
-        voice_channel = interaction.guild.voice_client
-        if not interaction.guild.voice_client.is_playing():
-            await voice_channel.disconnect(force=False)
-            voice_channel.cleanup()
-            server = interaction.guild
-            if server.id in self.streamers:
-                await self.streamers[server.id].cleanup()
-        else:
-            return
 
     @app_commands.command(name='play', description='Either plays a given song or adds one to the playlist')
     @app_commands.guild_only()
@@ -509,7 +497,7 @@ class Music(commands.Cog, name='Music',
         If a track is already playing, it adds the new one to the playlist instead
         """
         await interaction.response.defer(thinking=True)
-        live_check = False
+        first_entry_check = False
         if interaction.user.voice is None:
             await interaction.followup.send("Connect to a voice channel first")
             return
@@ -544,14 +532,14 @@ class Music(commands.Cog, name='Music',
             await streamer.queue_setup.wait()
 
         if not streamer.queue.__dict__['_queue']:
-            send_embed = False
+            send_addedToPlaylist_embed = False
             await asyncio.sleep(1)
             streamer.queue_setup.clear()
-            live_check = True
+            first_entry_check = True
         else:
-            send_embed = True
-        if not send_embed and (vc.is_playing() or vc.is_paused()):
-            send_embed = True
+            send_addedToPlaylist_embed = True
+        if not send_addedToPlaylist_embed and (vc.is_playing() or vc.is_paused()): # Avoid a race condition
+            send_addedToPlaylist_embed = True
 
         if not await is_link(track):
             await interaction.followup.send(
@@ -572,17 +560,17 @@ class Music(commands.Cog, name='Music',
                 if not source:
                     await interaction.followup.send("Your link seems to be invalid to me\nTry another")
                     streamer.currently_downloading.remove(track_id)
-                    if live_check:
+                    if first_entry_check:
                         streamer.queue_setup.set()
                     return
                 await streamer.queue.put(source)
             else:
                 await interaction.followup.send("This is a link to a livestream. I can't play this :<")
-                if live_check:
+                if first_entry_check:
                     streamer.queue_setup.set()
                 return
 
-        if send_embed:
+        if send_addedToPlaylist_embed:
             embed = discord.Embed(title=f"{source.title}", url=f"{source.web_url}",
                                   description=f"{source.description}",
                                   color=await color())

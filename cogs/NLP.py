@@ -6,7 +6,7 @@ import cohere
 from utils.utils import color
 
 # Put your LLM API keys here
-API_KEY = os.getenv("API_KEY")  # Cohere
+COHERE_API_KEY = os.getenv("COHERE_API_KEY")  # Cohere
 
 
 class NLP(commands.Cog, name='NLP', description="chat, summer"):
@@ -23,7 +23,7 @@ class NLP(commands.Cog, name='NLP', description="chat, summer"):
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Cohere settings and input
-        co = cohere.Client(API_KEY)
+        co = cohere.Client(COHERE_API_KEY)
         response = co.chat(message=text)
 
         # Building the embed
@@ -42,7 +42,7 @@ class NLP(commands.Cog, name='NLP', description="chat, summer"):
         # This response is here to avoid the discord slash command 3 second timeout.
 
         # Cohere settings and input
-        co = cohere.Client(API_KEY)
+        co = cohere.Client(COHERE_API_KEY)
         if style:
             response = co.chat(message=f"Summarise the following text: '{text}' in the style of {style}")
         else:

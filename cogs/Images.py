@@ -15,6 +15,7 @@ async def get_cat():
             else:
                 return None
 
+
 async def get_memes():
     """Returns the URL and title to a meme from the popcat API as strings"""
     async with aiohttp.ClientSession() as session:
@@ -48,6 +49,7 @@ class Images(commands.Cog, name='Images', description="cat, meme"):
 
         # Sending the embed
         await interaction.followup.send(embed=embed)
+
     @app_commands.command(name='meme', description="Dankest of memes")
     async def get_meme(self, interaction: discord.Interaction) -> None:
         """Responds to the user with a random meme"""

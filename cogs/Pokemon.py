@@ -1,11 +1,8 @@
-import os
 import discord
 import requests.exceptions
 from discord import app_commands
 from discord.ext import commands
 import aiohttp
-
-PREFIX = os.getenv('PREFIX')
 
 
 async def pokemon_num(index):

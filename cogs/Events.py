@@ -9,7 +9,6 @@ from datetime import datetime
 
 presents = ["cat toy", "deadMau5", "slinky", "piece of string", "ball of aluminium foil", "pigeon feather",
             "bit of dust"]  # Random games being "played" by the bot in its status
-PREFIX = os.getenv("PREFIX")
 DEV_ID = os.getenv("DEV_ID")  # If you're making your own bot, use your ID account developer ID/Code here
 
 
