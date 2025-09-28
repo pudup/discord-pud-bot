@@ -147,7 +147,7 @@ async def get_lyrics(title, artist):
 # Most of the functions here are just copied and pasted from ytdl docs and don't really need modifications
 # I've written comments for whatever modifications I've made
 
-yt_dlp.utils.bug_reports_message = lambda: ''
+# yt_dlp.utils.bug_reports_message = lambda: '' # This is causing errors
 
 ytdl_format_options = {
     'format': 'bestaudio/best',
@@ -165,10 +165,8 @@ ytdl_format_options = {
 }
 
 ffmpeg_options = {
-    'options': '-vn'
+    'options': '-vn -reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5'
 }
-
-ytdl = yt_dlp.YoutubeDL(ytdl_format_options)
 
 
 class YTDLSource(discord.PCMVolumeTransformer):
@@ -197,11 +195,12 @@ class YTDLSource(discord.PCMVolumeTransformer):
         # Here is why I removed the outtmpl format option
         # This helps separate the song folder for different servers running the bot at the same time
         # Keeps the bot from deleting the song folder of another server
-        ytdl.params['outtmpl'] = f'songs/{server_id}/%(title)s.%(ext)s'
+        # We download the file instead of streaming it because it's safer. YouTube tends to kill streams
+        options = ytdl_format_options.copy()
+        options['outtmpl'] = f'songs/{server_id}/%(title)s.%(ext)s'
         try:
-            with yt_dlp.YoutubeDL(ytdl_format_options) as ydl:
-                data = await loop.run_in_executor(None, lambda: ydl.extract_info(url, download=not stream))
-                # Not sure why I need to make a different yt_dlp object here, but it doesn't work without it
+            with yt_dlp.YoutubeDL(options) as ytdl:
+                data = await loop.run_in_executor(None, lambda: ytdl.extract_info(url, download=not stream))
         except yt_dlp.utils.DownloadError:
             return False
 
@@ -369,7 +368,7 @@ class Music(commands.Cog, name='Music',
         voice_state = member.guild.voice_client
         wait_event = await self.get_voice_state_event(member)
         if voice_state is None:
-            # Exiting if the bot it's not connected to a voice channel
+            # Exiting if the bot is not connected to a voice channel
             del self.voice_state_events[member.guild.id]
             return
 
