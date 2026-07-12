@@ -1,0 +1,31 @@
+stages:
+  - build
+
+variables:
+  DOCKER_TLS_CERTDIR: ""
+  DOCKER_BUILDKIT: "1"
+
+build:
+  stage: build
+  image: docker:27
+
+  services:
+    - docker:27-dind
+
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
+    - docker buildx create --use --driver docker-container
+    - docker buildx inspect --bootstrap
+
+  script:
+    - |
+      docker buildx build \
+        --platform linux/amd64,linux/arm64 \
+        --file Containerfile \
+        --tag "$CI_REGISTRY_IMAGE:latest" \
+        --tag "$CI_REGISTRY_IMAGE:$CI_COMMIT_SHA" \
+        --push \
+        .
+
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
