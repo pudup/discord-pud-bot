@@ -1,0 +1,17 @@
+# Used to add new requirements, not for updates or install
+# Run updater.sh after adding a new top level requirement
+
+aiofiles
+aiohttp
+async_timeout
+azapi
+cohere
+discord-pretty-help
+discord.py
+discord.py[voice]
+pytest
+pytest-asyncio
+PyNaCl
+Requests
+yt_dlp
+ytpy

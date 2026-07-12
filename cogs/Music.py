@@ -124,7 +124,7 @@ async def get_lyrics(title, artist):
     Returns requests lyrics, title and artist in that order
     """
 
-    lyrics_api = azapi.AZlyrics('google', accuracy=0.5)
+    lyrics_api = azapi.AZlyrics('duckduckgo', accuracy=0.5)
 
     if artist != "":
         lyrics_api.artist = artist
